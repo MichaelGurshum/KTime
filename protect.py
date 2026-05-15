@@ -10,7 +10,7 @@ Output: kabbalah-time-protected.html (deploy this to GitHub)
 import base64, json, re, sys, os
 
 # ── CONFIG — edit this ──
-GITHUB_USERNAME  = "YOUR_GITHUB_USERNAME"   # ← change this
+GITHUB_USERNAME  = "MichaelGurshum"   # ← change this
 SOURCE_FILE      = "kabbalah-time.html"
 OUTPUT_FILE      = "kabbalah-time-protected.html"
 AUTHOR_NAME      = "Michael Gurshumov"
