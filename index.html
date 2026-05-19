@@ -707,7 +707,8 @@ body::after {
   const _allowed = [
     'localhost',
     '127.0.0.1',
-    'michaelgurshum.github.io',
+    'https://ktime.pages.dev',
+    'MichaelGurshum.github.io',
   ];
   const _host = (window.location.hostname || '').toLowerCase();
   const _ok   = _allowed.some(d => _host === d || _host.endsWith('.' + d));
