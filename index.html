@@ -1,15 +1,3 @@
-<!--
-  ╔══════════════════════════════════════════════════════════════╗
-  ║           מערכת זמן קבלית — KABBALISTIC TIME SYSTEM         ║
-  ║                                                              ║
- ║  Copyright © 2025 Michael Gurshumov. All rights reserved.          ║
-  ║                                                              ║
-  ║  Unauthorized copying, reproduction, modification or use    ║
-  ║  without express written permission is strictly prohibited. ║
-  ║  Protected under international copyright law.               ║
-  ║  DMCA notices: contact owner via GitHub profile.            ║
-  ╚══════════════════════════════════════════════════════════════╝
--->
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
@@ -394,6 +382,78 @@ body::after {
   box-shadow: 0 0 14px rgba(255,200,0,.4);
 }
 
+/* ── Background switcher button ── */
+#bg-toggle {
+  position: fixed;
+  bottom: clamp(50px,10vh,90px);
+  left: clamp(8px,2vw,18px);
+  z-index: 50;
+  background: rgba(255,200,0,.10);
+  border: 1px solid rgba(255,200,0,.35);
+  border-radius: 50%;
+  width: clamp(34px,6vw,48px);
+  height: clamp(34px,6vw,48px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: clamp(14px,2.5vw,20px);
+  transition: all .3s;
+  backdrop-filter: blur(4px);
+}
+#bg-toggle:hover {
+  background: rgba(255,200,0,.22);
+  border-color: var(--gold);
+  box-shadow: 0 0 14px rgba(255,200,0,.4);
+}
+
+/* ── Background picker panel ── */
+#bg-panel {
+  position: fixed;
+  bottom: clamp(90px,16vh,140px);
+  left: clamp(8px,2vw,18px);
+  z-index: 50;
+  background: rgba(5,3,13,.95);
+  border: 1px solid rgba(255,200,0,.25);
+  border-radius: 12px;
+  padding: 10px;
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+  backdrop-filter: blur(8px);
+  min-width: 140px;
+}
+#bg-panel.open { display: flex; }
+
+.bg-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 7px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all .2s;
+  font-family: inherit;
+  font-size: clamp(9px,1.6vw,13px);
+  color: rgba(255,220,80,.80);
+  background: transparent;
+  text-align: right;
+  direction: rtl;
+  width: 100%;
+}
+.bg-option:hover, .bg-option.active {
+  background: rgba(255,200,0,.10);
+  border-color: rgba(255,200,0,.30);
+  color: var(--gold3);
+}
+.bg-option .bg-swatch {
+  width: 14px; height: 14px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  border: 1px solid rgba(255,255,255,.2);
+}
+
 /* ── Stack view ── */
 #stack-view {
   display: none;
@@ -699,69 +759,1301 @@ body::after {
 <!-- View toggle button -->
 <button id="view-toggle" onclick="toggleView()" title="החלף תצוגה">⊞</button>
 
+<!-- Background picker button -->
+<button id="bg-toggle" onclick="toggleBgPanel()" title="שנה רקע">🎨</button>
+
+<!-- Background picker panel -->
+<div id="bg-panel">
+  <button class="bg-option active" onclick="setBg('default')" id="bg-default">
+    <span class="bg-swatch" style="background:linear-gradient(135deg,#1a0a2e,#0a0418)"></span>
+    כהה קבלי
+  </button>
+  <button class="bg-option" onclick="setBg('midnight')" id="bg-midnight">
+    <span class="bg-swatch" style="background:linear-gradient(135deg,#000510,#001030)"></span>
+    חצות כחול
+  </button>
+  <button class="bg-option" onclick="setBg('fire')" id="bg-fire">
+    <span class="bg-swatch" style="background:linear-gradient(135deg,#1a0000,#3a0800)"></span>
+    אש ואמבר
+  </button>
+  <button class="bg-option" onclick="setBg('forest')" id="bg-forest">
+    <span class="bg-swatch" style="background:linear-gradient(135deg,#001a08,#002810)"></span>
+    יער ירוק
+  </button>
+  <button class="bg-option" onclick="setBg('violet')" id="bg-violet">
+    <span class="bg-swatch" style="background:linear-gradient(135deg,#0d0020,#180035)"></span>
+    סגול עמוק
+  </button>
+  <button class="bg-option" onclick="setBg('gold')" id="bg-gold">
+    <span class="bg-swatch" style="background:linear-gradient(135deg,#1a1000,#2a1800)"></span>
+    זהב מלכותי
+  </button>
+  <button class="bg-option" onclick="setBg('plain')" id="bg-plain">
+    <span class="bg-swatch" style="background:#05030D;border:1px solid rgba(255,255,255,.15)"></span>
+    ללא צורות
+  </button>
+</div>
+
 <script>
-/* (c)2025 Michael Gurshumov — All Rights Reserved. */
-(function _protect() {
-  'use strict';
+/* ═══════════════════════════════════════
+   DATA
+═══════════════════════════════════════ */
+const HOUR_NAMES = [
+  "נדאי ניאד","נדיא נידא","נאדי נאיד","דאינ יאדנ","דאני יאנד","דיאנ ידאנ",
+  "יהוה אהיה","יההו אההי","יוהה איהה","הוהי היהא","הויה היאה","ההוי ההיא",
+  "והיה יהאה","וההי יההא","ויהה יאהה","היהו האהי","היוה האיה","ההיו ההאי",
+  "אדני אינד","אדינ אידנ","אניד אנדי","דניא ינדא","דנאי ינאד","דינא ידנא"
+];
+const HOUR_SEF = [
+  'חסד','גבורה','תפארת','נצח','הוד','יסוד','מלכות',
+  'חסד','גבורה','תפארת','נצח','הוד','יסוד','מלכות',
+  'חסד','גבורה','תפארת','נצח','הוד','יסוד','מלכות',
+  'חסד','גבורה','תפארת'
+];
+const DAY_NAMES   = ['יום א','יום ב','יום ג','יום ד','יום ה','יום ו','שבת'];
+const DAY_SEF     = ['חסד','גבורה','תפארת','נצח','הוד','יסוד','מלכות'];
+const MONTH_NAMES = ['תשרי','חשון','כסלו','טבת','שבט','אדר','ניסן','אייר','סיון','תמוז','אב','אלול'];
+const MONTH_SEF   = ['חסד','גבורה','תפארת','נצח','הוד','יסוד','חסד','גבורה','תפארת','נצח','הוד','יסוד'];
+const WEEK_PTZ    = ['חכמה','בינה','תפארת','מלכות'];
+const SHMITA_L    = ['א','ב','ג','ד','ה','ו','שמיטה'];
+const SHMITA_SEF  = ['חסד','גבורה','תפארת','נצח','הוד','יסוד','מלכות'];
 
-  const _allowed = [
-    'localhost',
-    '127.0.0.1',
-    'YOUR_GITHUB_USERNAME.github.io',
+const LETTER_SEF = {
+  "א":"כתר","ב":"חכמה","ג":"בינה","ד":"חסד","ה":"גבורה","ו":"תפארת",
+  "ז":"נצח","ח":"הוד","ט":"יסוד","י":"חכמה","כ":"כתר","ל":"תפארת",
+  "מ":"בינה","נ":"נצח","ס":"הוד","ע":"חסד","פ":"גבורה","צ":"יסוד",
+  "ק":"מלכות","ר":"הוד","ש":"אש","ת":"תפארת"
+};
+
+/*
+ * YEAR PLACE-VALUE SEFIROT — each numeric component mapped separately
+ * Hundreds stay as ONE combined unit (תש=700=הוד, not ת+ש)
+ */
+/*
+ * Year place-value sefirot — all use the 7-cycle: חסד גבורה תפארת נצח הוד יסוד מלכות
+ * Position 1=חסד, 2=גבורה, 3=תפארת, 4=נצח, 5=הוד, 6=יסוד, 7=מלכות (then repeats)
+ * For year 5786: ה(5)=הוד  תש(700/pos7)=מלכות  פ(80/pos8)=חסד  ו(6)=יסוד
+ */
+/* Hundreds: ק=חסד ר=גבורה ש=תפארת ת=נצח — combined: תש=הוד תק=הוד תר=יסוד תת=יסוד תתק=מלכות */
+const HUNDREDS_SEF = {
+  100:'חסד',   200:'גבורה', 300:'תפארת', 400:'נצח',
+  500:'הוד',   600:'יסוד',  700:'הוד',   800:'יסוד',  900:'מלכות'
+};
+const HUNDREDS_STR = {
+  100:'ק', 200:'ר', 300:'ש', 400:'ת',
+  500:'תק', 600:'תר', 700:'תש', 800:'תת', 900:'תתק'
+};
+/* Tens: letter-sefirah — י=חכמה כ=כתר ל=תפארת מ=בינה נ=נצח ס=הוד ע=חסד פ=יסוד צ=תפארת */
+const TENS_SEF = {
+  10:'חכמה', 20:'כתר',   30:'תפארת', 40:'בינה',
+  50:'נצח',   60:'הוד',   70:'חסד',   80:'יסוד',  90:'תפארת'
+};
+const TENS_STR = {
+  10:'י',20:'כ',30:'ל',40:'מ',50:'נ',60:'ס',70:'ע',80:'פ',90:'צ'
+};
+/* Units: letter-sefirah assignment א=כתר ב=חכמה ג=בינה ד=חסד ה=גבורה ו=תפארת ז=נצח ח=הוד ט=יסוד */
+const UNITS_SEF = {
+  1:'כתר', 2:'חכמה', 3:'בינה', 4:'חסד',
+  5:'גבורה', 6:'תפארת', 7:'נצח', 8:'הוד', 9:'יסוד'
+};
+const UNITS_STR = {
+  1:'א',2:'ב',3:'ג',4:'ד',5:'ה',6:'ו',7:'ז',8:'ח',9:'ט'
+};
+/* Millennium: א=כתר ב=חכמה ג=בינה ד=חסד ה=גבורה ו=תפארת ז=נצח 
+const MIL_SEF = {
+  1:'גבורה', 2:'תפארת', 3:'נצח', 3:הוד', 4:'חסד',
+};
+*/
+const MIL_SEF = {
+  1:'גבורה',
+  2:'תפארת',
+  3:'נצח',
+  4:'הוד',
+  5:'יסוד',   // ← this gives you what you want
+  6:'מלכות',
+  7:'חסד'
+};
+
+const SEFI_KEY = {
+  'כתר':'keter',
+  'חסד':'chesed','גבורה':'gevurah','תפארת':'tiferet',
+  'נצח':'netzach','הוד':'hod','יסוד':'yesod','מלכות':'malchut'
+};
+
+/* Vivid SVG fill per sefirah */
+const SEFI_COLOR = {
+  keter:'rgba(232,232,255,.95)',
+  chesed:'rgba(66,165,245,.95)',  gevurah:'rgba(239,83,80,.95)',
+  tiferet:'rgba(255,220,0,.95)',  netzach:'rgba(0,230,118,.95)',
+  hod:'rgba(234,128,252,.95)',    yesod:'rgba(179,136,255,.95)',
+  malchut:'rgba(255,145,0,.95)'
+};
+
+/* ═══════════════════════════════════════
+   UTILITIES
+═══════════════════════════════════════ */
+const NS = "http://www.w3.org/2000/svg";
+
+function mk(tag, a) {
+  const el = document.createElementNS(NS, tag);
+  for (const [k,v] of Object.entries(a||{})) el.setAttribute(k,v);
+  return el;
+}
+
+function sKey(s)     { return SEFI_KEY[s] || 'chesed'; }
+function sSvgCls(s)  { return 'rs-' + sKey(s); }
+function sColor(s)   { return SEFI_COLOR[sKey(s)] || SEFI_COLOR.tiferet; }
+function dlSef(s) {
+  const k = sKey(s);
+  return 'dl-sef dl-s-' + (k === 'tiferet' && s === 'כתר' ? 'keter' : k);
+}
+
+/* pill(name, sefirah, abbrevHtml) — colored bordered chip with optional status line */
+function pill(name, sef, abbrevHtml) {
+  return pillWithExtra(name, sef, abbrevHtml, null);
+}
+
+/* pillWithExtra — pill with optional extra HTML row below the abbrev line */
+function pillWithExtra(name, sef, abbrevHtml, extraHtml) {
+  const k = sef === 'כתר' ? 'keter' : sKey(sef);
+  const abLine = abbrevHtml
+    ? `<span class="sab-line">${abbrevHtml}</span>`
+    : '';
+  const exLine = extraHtml || '';
+  return `<span class="pill pill-${k}">`+
+    `<span class="pill-body">`+
+    `<span class="pill-name">${name}</span>`+
+    `<span class="pill-tag">${sef}</span>`+
+    `</span>`+
+    abLine+
+    exLine+
+    `</span>`;
+}
+
+/* year-value chip */
+function yvChip(str, lbl, sef) {
+  const k = sef === 'כתר' ? 'keter' : sKey(sef);
+  return `<span class="yv-chip dl-s-${k}">`+
+    `<span class="yv-top">`+
+    `<span class="yv-str">${str}</span>`+
+    `<span class="yv-dash">—</span>`+
+    `<span class="yv-sef">${sef}</span>`+
+    `</span>`+
+    `</span>`;
+}
+
+function toHN(n) {
+  const t = ["","א","ב","ג","ד","ה","ו","ז","ח","ט",
+    "י","יא","יב","יג","יד","טו","טז","יז","יח","יט",
+    "כ","כא","כב","כג","כד","כה","כו","כז","כח","כט",
+    "ל","לא","לב","לג","לד","לה","לו","לז","לח","לט",
+    "מ","מא","מב","מג","מד","מה","מו","מז","מח","מט","נ"];
+  return t[n] || String(n);
+}
+
+/*
+ * yearLetters(y) — returns just the last-3 abbreviation string e.g. "תשפו"
+ * fullYearStr(y) — e.g. "ה׳תשפ״ו"
+ * yearComponents(y) — returns array of {str, val, sef} for display
+ */
+function yearLetters(y) {
+  const mod=y%1000;
+  const hh=Math.floor(mod/100), tt=Math.floor((mod%100)/10), oo=mod%10;
+  const hundV=hh*100, tenV=tt*10;
+  let r=HUNDREDS_STR[hundV]||"";
+  // special Gershayim cases
+  if (tt===1&&oo===5) r+="טו";
+  else if (tt===1&&oo===6) r+="טז";
+  else {
+    if (tenV) r+=TENS_STR[tenV]||"";
+    if (oo)   r+=UNITS_STR[oo]||"";
+  }
+  return r;
+}
+
+function fullYearStr(y) {
+  const mil=Math.floor(y/1000);
+  const mH=["","א","ב","ג","ד","ה","ו","ז","ח","ט"][mil]||"";
+  const chars=yearLetters(y).split("");
+  if (chars.length>=2) chars.splice(chars.length-1,0,"״");
+  else chars.push("׳");
+  return mH+"׳"+chars.join("");
+}
+
+/*
+ * Returns array of place-value components for the year, each with:
+ *   { str: "תש", label: "700 — שבע מאות", sef: "הוד", css: "hod" }
+ */
+function yearComponents(y) {
+  const mil=Math.floor(y/1000);
+  const mod=y%1000;
+  const hh=Math.floor(mod/100), tt=Math.floor((mod%100)/10), oo=mod%10;
+  const hundV=hh*100, tenV=tt*10;
+  const milStr=["","א","ב","ג","ד","ה","ו","ז","ח","ט"][mil]||"";
+  const milLabels=["","אחד","שניים","שלושה","ארבעה","חמשה","ששה","שבעה"];
+  const tenLabels={10:"עשרה",20:"עשרים",30:"שלושים",40:"ארבעים",50:"חמישים",
+                   60:"ששים",70:"שבעים",80:"שמונים",90:"תשעים"};
+  const unitLabels={1:"אחת",2:"שתיים",3:"שלוש",4:"ארבע",5:"חמש",
+                    6:"שש",7:"שבע",8:"שמונה",9:"תשע"};
+  const hundLabels={100:"מאה",200:"מאתיים",300:"שלש מאות",400:"ארבע מאות",
+                    500:"חמש מאות",600:"שש מאות",700:"שבע מאות",
+                    800:"שמונה מאות",900:"תשע מאות"};
+  const parts=[];
+  if (mil>0) parts.push({
+    str: milStr+"׳",
+    label: (milLabels[mil]||mil)+" אלפים",
+    sef: MIL_SEF[mil]||"כתר",
+    css: sKey(MIL_SEF[mil]||"כתר")
+  });
+  if (hundV>0) parts.push({
+    str: HUNDREDS_STR[hundV]||"",
+    label: hundLabels[hundV]||"",
+    sef: HUNDREDS_SEF[hundV]||"חסד",
+    css: sKey(HUNDREDS_SEF[hundV]||"חסד")
+  });
+  if (tenV>0) parts.push({
+    str: TENS_STR[tenV]||"",
+    label: tenLabels[tenV]||"",
+    sef: TENS_SEF[tenV]||"חסד",
+    css: sKey(TENS_SEF[tenV]||"חסד")
+  });
+  if (oo>0) parts.push({
+    str: UNITS_STR[oo]||"",
+    label: unitLabels[oo]||"",
+    sef: UNITS_SEF[oo]||"כתר",
+    css: sKey(UNITS_SEF[oo]||"כתר")
+  });
+  return parts;
+}
+
+function weekPtzLabel(wn, ptz) {
+  const sub=["ד׳","ח׳","ז״א ד׳","נוק׳ ד׳"];
+  return (sub[(wn-1)%4]||"ד׳")+ptz;
+}
+
+/*
+ * Day-of-month sefirah:
+ *   1 (א) = כתר  — ראש חודש
+ *   30 (ל) = כתר  — ראש חודש
+ *   2–29: cycle of 7 starting from חסד
+ *     position = (day - 2) % 7  → 0=חסד 1=גבורה 2=תפארת 3=נצח 4=הוד 5=יסוד 6=מלכות
+ *   Verify: 2,9,16,23 → (d-2)%7=0 → חסד ✓
+ *           5,12,19,26 → (d-2)%7=3 → נצח ✓
+ */
+const CYCLE_7 = ['חסד','גבורה','תפארת','נצח','הוד','יסוד','מלכות'];
+
+function domSefirah(d) {
+  if (d===1 || d===30) return 'כתר';
+  return CYCLE_7[(d-2)%7];
+}
+
+/* Is today ראש חודש? (day 1 or 30) */
+function isRoshChodesh(d) { return d===1||d===30; }
+
+/*
+ * sefAbbrev(currentSefirah, includeKeter)
+ * Builds the abbreviated sequence string like  כ ח ג ת נ ה י מ
+ * with the active one highlighted, others dimmed.
+ * The abbreviation letters:
+ *   כתר=כ  חסד=ח  גבורה=ג  תפארת=ת  נצח=נ  הוד=ה  יסוד=י  מלכות=מ
+ */
+/*
+ * Full 10 sefirot abbreviation sequence:
+ *   חב"ד  = כ(תר) ח(כמה) ב(ינה) ד(עת)
+ *   חג"ת  = ח(סד)  ג(בורה) ת(פארת)
+ *   נהי"מ = נ(צח) ה(וד) י(סוד) מ(לכות)
+ *
+ * Keys map each letter to its CSS color class.
+ * Note: חכמה and חסד both abbreviate to ח —
+ * they share the chesed (blue) color, differentiated by position.
+ */
+const SEF_ABBREV = [
+  {s:'כתר',  a:'כ', k:'keter'},
+  {s:'חכמה', a:'ח', k:'chesed'},
+  {s:'בינה', a:'ב', k:'hod'},
+  {s:'דעת',  a:'ד', k:'tiferet'},
+  {s:'חסד',  a:'ח', k:'chesed'},
+  {s:'גבורה',a:'ג', k:'gevurah'},
+  {s:'תפארת',a:'ת', k:'tiferet'},
+  {s:'נצח',  a:'נ', k:'netzach'},
+  {s:'הוד',  a:'ה', k:'hod'},
+  {s:'יסוד', a:'י', k:'yesod'},
+  {s:'מלכות',a:'מ', k:'malchut'}
+];
+
+/* Week sefirot (4-week cycle): חכמה בינה תפארת מלכות */
+const WEEK_SEF_ABBREV = [
+  {s:'חכמה', a:'ח', k:'chesed'},
+  {s:'בינה', a:'ב', k:'gevurah'},
+  {s:'תפארת',a:'ת', k:'tiferet'},
+  {s:'מלכות',a:'מ', k:'malchut'}
+];
+
+function sefAbbrevLine(currentSef, list) {
+  // Full 11-list:  כ ח ב ד ״ ח ג ת ״ נ ה י מ
+  //   group breaks after idx 3 (ד) and idx 6 (ת)
+  // 7-list (slice 4): ח ג ת ״ נ ה י מ
+  //   group break after idx 2 (ת)
+  // 4-list (week):  ח ב ת מ  — no group breaks
+  const isFullList = list.length === 11;
+  const is7List    = list.length === 7;
+
+  return list.map((item, idx) => {
+    const active = item.s === currentSef;
+    const letter = active
+      ? `<span class="sab-active sab-${item.k}">${item.a}</span>`
+      : `<span class="sab-dim">${item.a}</span>`;
+
+    if (idx === list.length - 1) return letter; // last — no separator
+
+    let sep = '<span class="sab-sep">׳</span>';
+    if (isFullList && (idx === 3 || idx === 6)) sep = '<span class="sab-grp">״</span>';
+    if (is7List    &&  idx === 2)               sep = '<span class="sab-grp">״</span>';
+
+    return letter + sep;
+  }).join('');
+}
+
+/* 7-cycle (חסד–מלכות): indices 4–10 of the full 11-list */
+function sefAbbrev7(currentSef) {
+  return sefAbbrevLine(currentSef, SEF_ABBREV.slice(4));
+}
+
+/* 10-cycle (כתר–מלכות, all): full list — used for כתר-possible contexts */
+function sefAbbrev8(currentSef) {
+  return sefAbbrevLine(currentSef, SEF_ABBREV);
+}
+
+/* chabad-line: full 10-sefirot abbreviated as כחב"ד|חג"ת|נהי"מ */
+function sefAbbrevFull(currentSef) {
+  return sefAbbrevLine(currentSef, SEF_ABBREV);
+}
+
+/* 4-cycle for week */
+function sefAbbrev4(currentSef) {
+  return sefAbbrevLine(currentSef, WEEK_SEF_ABBREV);
+}
+
+function getHebDate() {
+  const parts=new Intl.DateTimeFormat('he-u-ca-hebrew',
+    {day:'numeric',month:'long',year:'numeric'}).formatToParts(new Date());
+  let d,m,y;
+  parts.forEach(x=>{
+    if(x.type==='day')   d=parseInt(x.value);
+    if(x.type==='month') m=x.value;
+    if(x.type==='year')  y=parseInt(x.value);
+  });
+  return {d,m,y};
+}
+
+/* Normalize month names from Intl API to our preferred spellings.
+ * The browser's Hebrew calendar Intl API returns double-vav spellings
+ * like סיוון and חשוון — we normalize to single-vav where preferred. */
+const MONTH_NORMALIZE = {
+  'סיוון': 'סיון',
+  'חשוון': 'חשון',
+};
+
+function normalizeMonth(name) {
+  if (!name) return name;
+  if (MONTH_NORMALIZE[name]) return MONTH_NORMALIZE[name];
+  return name.replace(/וו/g, 'ו');
+}
+
+function mIdx(name) {
+  const norm = normalizeMonth(name);
+  return MONTH_NAMES.findIndex(mn=>mn===norm||norm.includes(mn)||mn.includes(norm));
+}
+
+/*
+ * Month partzuf/filling label:
+ *   Summer months (ניסן=6 through אלול=11, plus תשרי=0):
+ *     ב״ן דמ״ה וב״ן דב״ן
+ *   Winter months (חשוון=1 through אדר=5):
+ *     מ״ה דמ״ה ומ״ה דב״ן
+ */
+function monthPartzuf(mi) {
+  const summer = [0,6,7,8,9,10,11]; // תשרי + ניסן through אלול
+  return summer.includes(mi)
+    ? 'ב״ן דמ״ה וב״ן דב״ן'
+    : 'מ״ה דמ״ה ומ״ה דב״ן';
+}
+
+function pt(cx,cy,r,deg) {
+  const a=(deg-90)*Math.PI/180;
+  return {x:cx+r*Math.cos(a),y:cy+r*Math.sin(a)};
+}
+
+function segPath(cx,cy,r1,r2,sa,ea) {
+  const G=.6,s=sa+G/2,e=ea-G/2,lg=(e-s)>180?1:0;
+  const a=pt(cx,cy,r2,s),b=pt(cx,cy,r2,e),c=pt(cx,cy,r1,e),d=pt(cx,cy,r1,s);
+  return `M${a.x},${a.y}A${r2},${r2} 0 ${lg} 1 ${b.x},${b.y}`+
+         `L${c.x},${c.y}A${r1},${r1} 0 ${lg} 0 ${d.x},${d.y}Z`;
+}
+
+/* ═══════════════════════════════════════
+   CURVED TEXT
+═══════════════════════════════════════ */
+let _pid=0;
+
+function ctext(g,defs,cx,cy,r,sa,ea,text,cls,fs,flt) {
+  const id="p"+(++_pid);
+  const mid=((sa+ea)/2+360)%360;
+  const bot=mid>90&&mid<270;
+  let d;
+  if (!bot) {
+    const p1=pt(cx,cy,r,sa),p2=pt(cx,cy,r,ea),lg=(ea-sa)>180?1:0;
+    d=`M${p1.x},${p1.y}A${r},${r} 0 ${lg} 1 ${p2.x},${p2.y}`;
+  } else {
+    const p1=pt(cx,cy,r,ea),p2=pt(cx,cy,r,sa),lg=(ea-sa)>180?1:0;
+    d=`M${p1.x},${p1.y}A${r},${r} 0 ${lg} 0 ${p2.x},${p2.y}`;
+  }
+  defs.appendChild(mk("path",{id,d,fill:"none"}));
+  const tEl=mk("text",{class:cls,"font-size":fs});
+  if(flt) tEl.setAttribute("filter",flt);
+  const tp=mk("textPath",{href:`#${id}`,startOffset:"50%","text-anchor":"middle"});
+  tp.textContent=text;
+  tEl.appendChild(tp);
+  g.appendChild(tEl);
+}
+
+/* ═══════════════════════════════════════
+   DRAW GENERIC RING
+═══════════════════════════════════════ */
+function drawRing(g,defs,cx,cy,r1,r2,items,mxMain,mxSefi) {
+  const n=items.length,step=360/n,rH=r2-r1,rMid=(r1+r2)/2,CRAT=.65;
+
+  items.forEach((item,i)=>{
+    const s=i*step,e=s+step;
+    const sk=item.sefi?sKey(item.sefi):null;
+
+    if (item.active) {
+      const hFill=sk
+        ? SEFI_COLOR[sk].replace('.95)','.20)')
+        : 'rgba(255,210,0,.15)';
+      g.appendChild(mk("path",{d:segPath(cx,cy,r1-2,r2+2.5,s,e),fill:hFill,filter:"url(#glow2)"}));
+    }
+
+    const segCls=item.active
+      ? "seg "+(sk?"seg-"+sk:"seg-act")
+      : "seg seg-dim";
+    const seg=mk("path",{d:segPath(cx,cy,r1,r2,s,e),class:segCls});
+    if(item.active) seg.setAttribute("filter","url(#glow1)");
+    g.appendChild(seg);
+
+    const arcLen=2*Math.PI*rMid*(step/360);
+    const twoLine=!!item.sefi&&rH>=13;
+    let rMain,fsMain,rSefi,fsSefi;
+
+    if(twoLine){
+      rMain=r1+rH*.70; rSefi=r1+rH*.28;
+      fsMain=Math.min(Math.max(arcLen/(item.label.length*CRAT),4),mxMain||rH*.44);
+      fsSefi=Math.min(Math.max(arcLen/(item.sefi.length*CRAT),3.2),mxSefi||rH*.28);
+    } else {
+      rMain=rMid;
+      fsMain=Math.min(Math.max(arcLen/(item.label.length*CRAT),4),mxMain||rH*.65);
+    }
+
+    const lCls=item.active?(item.partzuf?"rl-ptz-act":"rl-act"):(item.partzuf?"rl-ptz":"rl");
+    ctext(g,defs,cx,cy,rMain,s,e,item.label,lCls,fsMain,item.active?"url(#tglow2)":null);
+
+    if(twoLine&&item.sefi)
+      ctext(g,defs,cx,cy,rSefi,s,e,item.sefi,sSvgCls(item.sefi),fsSefi,null);
+  });
+}
+
+/* ═══════════════════════════════════════
+   DRAW HOUR RING
+═══════════════════════════════════════ */
+function drawHourRing(g,defs,cx,cy,r1,r2,curH) {
+  const step=360/24,rH=r2-r1,rMid=(r1+r2)/2,CRAT=.62;
+
+  for(let i=0;i<24;i++){
+    const s=i*step,e=s+step,active=i===curH;
+    const sk=sKey(HOUR_SEF[i]);
+
+    if(active){
+      g.appendChild(mk("path",{
+        d:segPath(cx,cy,r1-2,r2+2.5,s,e),
+        fill:SEFI_COLOR[sk].replace('.95)','.18)'),
+        filter:"url(#glow2)"
+      }));
+    }
+
+    const seg=mk("path",{
+      d:segPath(cx,cy,r1,r2,s,e),
+      class:"seg "+(active?"seg-"+sk:"seg-dim")
+    });
+    if(active) seg.setAttribute("filter","url(#glow1)");
+    g.appendChild(seg);
+
+    const arcLen=2*Math.PI*rMid*(step/360);
+    const words=HOUR_NAMES[i].split(" ");
+    const maxW=Math.max(...words.map(w=>w.length));
+
+    /* Layout from outer→inner:
+     *  r1+rH*.88  — hour number (1-12 AM/PM)
+     *  r1+rH*.66  — name word 1
+     *  r1+rH*.30  — name word 2
+     *  r1+rH*.10  — sefirah (active only)
+     */
+    const fsH=Math.min(Math.max(arcLen/(4*CRAT),2.8),rH*.20);  // hour num font
+    const fsW=Math.min(Math.max(arcLen/(maxW*CRAT),3.0),rH*.30); // name font
+    const lCls=active?"hn-act":"hn";
+    const lFlt=active?"url(#tglow2)":null;
+
+    // Hour number label  e.g. "12AM" or "3PM"
+    const h12=(i%12)||12, ap=i<12?"AM":"PM";
+    const hourLabel=`${h12}${ap}`;
+    const hNumCls=active?"hn-act":"hn-num";
+    ctext(g,defs,cx,cy,r1+rH*.88,s,e,hourLabel,hNumCls,fsH,active?"url(#tglow2)":null);
+
+    // Name words — active gets strong double-glow, inactive gets tglow
+    const nameFlt = active ? "url(#tglow2)" : "url(#tglow)";
+    ctext(g,defs,cx,cy,r1+rH*.66,s,e,words[0],lCls,fsW,nameFlt);
+    if(words[1]) ctext(g,defs,cx,cy,r1+rH*.30,s,e,words[1],lCls,fsW,nameFlt);
+
+    // Decorative mid-dot between word rows (all segments)
+    {
+      const dotCls = active ? "hn-dot-act" : "hn-dot";
+      const dotFs  = Math.max(2.5, fsW * 0.55);
+      ctext(g,defs,cx,cy,r1+rH*.49,s,e,'·',dotCls,dotFs,null);
+    }
+
+    // Sefirah label removed from hour ring per user request
+  }
+}
+
+/* ═══════════════════════════════════════
+   RING TITLE LABEL
+   Draws a short curved title at the top of a ring band
+   r = midpoint radius of the ring
+═══════════════════════════════════════ */
+function drawRingTitle(g, defs, cx, cy, r, title) {
+  const id = "rt" + (++_pid);
+  // Arc at the very top — from 265° to 275° (tiny 10° arc centred at top)
+  // We want the text to sit inside the ring gap at the 12-o'clock position
+  const span = 18; // degrees each side of top
+  const p1 = pt(cx, cy, r, -span), p2 = pt(cx, cy, r, span);
+  defs.appendChild(mk("path", {
+    id, fill: "none",
+    d: `M${p1.x},${p1.y}A${r},${r} 0 0 1 ${p2.x},${p2.y}`
+  }));
+  const txt = mk("text", {
+    "font-family": "Frank Ruhl Libre, Arial Hebrew, Noto Sans Hebrew, David, serif",
+    "font-size": "5.5",
+    "font-weight": "900",
+    fill: "rgba(255,230,100,.70)",
+    filter: "url(#tglow)"
+  });
+  const tp = mk("textPath", {
+    href: `#${id}`,
+    startOffset: "50%",
+    "text-anchor": "middle"
+  });
+  tp.textContent = title;
+  txt.appendChild(tp);
+  g.appendChild(txt);
+}
+
+/* ═══════════════════════════════════════
+   GLOW NAME
+═══════════════════════════════════════ */
+function buildGlowName(str) {
+  return str.split(" ").map(word=>{
+    const chars=word.split("").map((ch,i)=>{
+      const dash=i<word.length-1?`<span class="dash-sep">-</span>`:"";
+      return `<span class="fc"><span class="b">${ch}</span><span class="g">${ch}</span><span class="s">${ch}</span></span>${dash}`;
+    }).join("");
+    return `<span class="name-word">${chars}</span>`;
+  }).join(`<span style="display:inline-block;width:clamp(6px,1.4vw,18px)"></span>`);
+}
+
+/* ═══════════════════════════════════════
+   WHEEL
+═══════════════════════════════════════ */
+function buildWheel(cur) {
+  const track=document.getElementById("wheel-track");
+  const wheel=document.getElementById("hour-wheel");
+  const iW=Math.min(Math.max(44,wheel.offsetWidth*.13),100);
+  track.innerHTML="";
+  for(let i=0;i<24;i++){
+    const adj=Math.abs(i-cur)===1||Math.abs(i-cur)===23;
+    const d=document.createElement("div");
+    d.className="wi"+(i===cur?" active":adj?" near":"");
+    d.style.width=iW+"px";
+    const h12=(i%12)||12,ap=i<12?"AM":"PM";
+    d.innerHTML=
+      `<div class="wh">${h12}${ap}</div>`+
+      `<div class="wn">${HOUR_NAMES[i]}</div>`;
+    track.appendChild(d);
+  }
+  track.style.transform=`translateX(${-(cur*iW-wheel.offsetWidth/2+iW/2)}px)`;
+}
+
+/* ═══════════════════════════════════════
+   FIRE
+═══════════════════════════════════════ */
+function animateFire() {
+  const fb=document.getElementById("fireBg");
+  let t=0;
+  setInterval(()=>{
+    t+=.06;
+    const op=.60+Math.sin(t)*.18+Math.sin(t*2.4+1)*.09;
+    fb.setAttribute("opacity",op.toFixed(3));
+  },40);
+}
+
+/* ═══════════════════════════════════════
+   MAIN UPDATE
+═══════════════════════════════════════ */
+let lastHour=-1;
+
+function update() {
+  const now=new Date(),h=now.getHours();
+  const _heb=getHebDate();
+  const heb={d:_heb.d, m:normalizeMonth(_heb.m), y:_heb.y};
+  const dayJs=now.getDay();
+  const week=Math.ceil(heb.d/7);
+  const mi=mIdx(heb.m);
+  const sPos=(heb.y-1)%7; // 0=חסד…6=מלכות, year 1=chesed
+  const yY=67; // יובל ס״ז — traditional count from entry into Eretz Yisrael
+  const yFull    = fullYearStr(heb.y);
+  const yComps   = yearComponents(heb.y);
+  /* week sefirah computed inline in weekPill below */
+  const mSef     = MONTH_SEF[Math.max(0,mi)];
+  const dom      = toHN(heb.d);
+  const domSef   = domSefirah(heb.d);
+  const isRC     = isRoshChodesh(heb.d);
+
+  lastHour=h;
+
+  /* Header name */
+  document.getElementById("name-wrap").innerHTML=buildGlowName(HOUR_NAMES[h]);
+
+  /* ── DATE TITLE ──
+   * Row 1 (headline): ו באייר ה׳תשפ״ו
+   * Row 1b (attr line): ו׳ באייר הוד דהוד דחכמה דגבורה דתפארת דיסוד דהוד דיסוד
+   * Row 2 (pills): יום ה׳ | שבוע א | ו בחודש | אייר | שמיטה ה
+   * Row 3 (year chips): שנה ו | עשרות פ | מאות תש | ה׳ אלפים | יובל ס״ז
+   */
+
+  /* ── Compute all sefirot for attribute line ── */
+  const weekPtz  = WEEK_PTZ[(week-1)%4]||'מלכות';
+  const yUnits   = yComps.find(x=>x.label&&x.label.includes('שנ'))||yComps[yComps.length-1];
+  const yTens    = yComps.find(x=>x.label&&(x.label.includes('עשר')||x.label.includes('שמונ')&&x.label.length<12))||null;
+  const yHunds   = yComps.find(x=>x.label&&x.label.includes('מאו'))||null;
+  const yMil     = yComps.find(x=>x.label&&x.label.includes('אלפ'))||null;
+
+  // Helper to color a sefirah name inline
+  function sf(sef) {
+    const k = sef==='כתר'?'keter':sKey(sef);
+    return `<span class="dl-attr-sef dl-s-${k}">${sef}</span>`;
+  }
+
+  /* Row 1 — big headline */
+  const rcBadge = isRC ? `<span class="dl-rc-badge">ראש חודש</span>` : "";
+  const row1 =
+    `<div class="dl-headline">`+
+    rcBadge+
+    `<span class="dl-dom-num">${dom}</span>`+
+    `<span class="dl-month-nm">ב${heb.m}</span>`+
+    `<span class="dl-year-nm">${yFull}</span>`+
+    `</div>`;
+
+  /* Row 1b — attribute line with bracketed source labels
+   * Format: ז באייר יסוד[יום] דיסוד[יום בחודש] דגבורה[חודש]
+   *         דתפארת[שנה] דיסוד[עשור] דהוד[המאה] דיסוד[אלפים]
+   * Order: יום → יום בחודש → חודש → שנה → עשור → מאה → אלפים
+   * First item: no ד prefix; rest prefixed with ד
+   */
+  function sfBracketed(sef, label, noD) {
+    const k = sef==='כתר'?'keter':sKey(sef);
+    const d = noD ? '' : '<span class="dl-attr-d">ד</span>';
+    return d +
+      `<span class="dl-attr-sef dl-s-${k}">${sef}</span>`+
+      `<span class="dl-attr-bracket">[${label}]</span>`;
+  }
+
+  // Collect year components in order: units→tens→hundreds→mil
+  const yReversed = [...yComps].reverse();
+  const yLabels   = ['שנה','עשור','המאה','אלפים'];
+
+  const attrItems = [
+    sfBracketed(DAY_SEF[dayJs],    'יום',          true),   // first — no ד
+    sfBracketed(domSef,            'יום בחודש',    false),
+    sfBracketed(weekPtz,           'שבוע',         false),
+    sfBracketed(mSef,              'חודש',         false),
+    ...yReversed.map((comp,i) => sfBracketed(comp.sef, yLabels[i]||'', false))
   ];
-  const _host = (window.location.hostname || '').toLowerCase();
-  const _ok   = _allowed.some(d => _host === d || _host.endsWith('.' + d));
-  if (!_ok) {
-    document.body.innerHTML =
-      '<div style="display:flex;align-items:center;justify-content:center;'
-      + 'height:100vh;background:#000;color:#c00;font-family:monospace;'
-      + 'font-size:14px;text-align:center;padding:20px">'
-      + 'This software may only run on its authorized domain.<br>'
-      + 'Unauthorized use violates copyright law.<br><br>'
-      + '(c) 2025 Michael Gurshumov — All Rights Reserved.</div>';
-    throw new Error('Domain not authorized.');
+
+  const row1b =
+    `<div class="dl-attr-line">`+
+    `<span class="dl-attr-date">${dom}׳ ב${heb.m}</span>`+
+    `<span class="dl-attr-sep"> </span>`+
+    attrItems.join('<span class="dl-attr-space"></span>')+
+    `</div>`;
+
+  /* ── Row 2 — pills: יום השבוע first, then שבוע, then יום בחודש, then חודש, then שמיטה ── */
+  const dayPill = pill(DAY_NAMES[dayJs], DAY_SEF[dayJs], sefAbbrev7(DAY_SEF[dayJs]));
+  const weekPill = pill(`שבוע ${toHN(week)}`, weekPtz, sefAbbrev4(weekPtz));
+  const domPillKey = domSef === 'כתר' ? 'keter' : sKey(domSef);
+  const domAbbrev  = domSef === 'כתר' ? sefAbbrev8(domSef) : sefAbbrev7(domSef);
+  const domPill =
+    `<span class="pill pill-${domPillKey}">`+
+    `<span class="pill-body"><span class="pill-name">${dom} בחודש</span><span class="pill-tag">${domSef}</span></span>`+
+    `<span class="sab-line">${domAbbrev}</span>`+
+    `</span>`;
+  const mPtz     = monthPartzuf(mi);
+  const mPtzHtml = `<span class="pill-ptz">${mPtz}</span>`;
+  const monthPill = pillWithExtra(heb.m, mSef, sefAbbrev7(mSef), mPtzHtml);
+  const shmitaLabel = sPos===6 ? 'שנת שמיטה' : `שמיטה ${SHMITA_L[sPos]}`;
+  const shmitaPill  = pill(shmitaLabel, SHMITA_SEF[sPos], sefAbbrev7(SHMITA_SEF[sPos]));
+
+  const row2 =
+    `<div class="dl-pills">`+
+    dayPill+
+    `<span class="dl-dot">·</span>`+
+    weekPill+
+    `<span class="dl-dot">·</span>`+
+    domPill+
+    `<span class="dl-dot">·</span>`+
+    monthPill+
+    `<span class="dl-dot">·</span>`+
+    shmitaPill+
+    `</div>`;
+
+  /* ── Row 3 — year chips: units→tens→hundreds→mil, then יובל ── */
+  const yvChipsOrdered = [...yComps].reverse().map(comp => {
+    const abbr = comp.sef === 'כתר' ? sefAbbrev8(comp.sef) : sefAbbrev7(comp.sef);
+    const k = comp.sef === 'כתר' ? 'keter' : sKey(comp.sef);
+    const labelShort = comp.label.includes('אלפ') ? 'אלפים'
+                     : comp.label.includes('מאו') ? 'מאות'
+                     : comp.label.includes('עשר')||comp.label.includes('שמונ')||comp.label.includes('שבע')||comp.label.includes('ששי')||comp.label.includes('חמי')||comp.label.includes('ארב')||comp.label.includes('שלו')||comp.label.includes('עשר') ? 'עשרות'
+                     : 'שנה';
+    return `<span class="yv-chip dl-s-${k}">`+
+      `<span class="yv-label">${labelShort}</span>`+
+      `<span class="yv-top">`+
+      `<span class="yv-str">${comp.str}</span>`+
+      `<span class="yv-dash">—</span>`+
+      `<span class="yv-sef">${comp.sef}</span>`+
+      `</span>`+
+      `<span class="sab-line">${abbr}</span>`+
+      `</span>`;
+  }).join(' ');
+
+  /* יובל ס״ז — "יובל" in neutral white, "ס״ז" in gold tiferet */
+  const yovelChip =
+    `<span class="yv-chip dl-s-yesod">`+
+    `<span class="yv-top">`+
+    `<span class="yv-str" style="color:rgba(220,210,190,.90)">יובל</span>`+
+    `<span class="yv-dash"> </span>`+
+    `<span class="yv-sef" style="color:var(--tiferet);font-weight:900;text-shadow:0 0 8px rgba(255,214,0,.8)">ס״ז</span>`+
+    `</span>`+
+    `</span>`;
+
+  const row3 =
+    `<div class="dl-sub">`+
+    yvChipsOrdered+
+    `<span class="dl-dot">|</span>`+
+    yovelChip+
+    `</div>`;
+
+  document.getElementById("date-line").innerHTML = row1+row1b+row2+row3;
+
+  /* SVG rings */
+  const rG=document.getElementById("rings");
+  const defs=document.getElementById("arcDefs");
+  rG.innerHTML=""; defs.innerHTML=""; _pid=0;
+  const CX=220,CY=220;
+
+  drawHourRing(rG,defs,CX,CY,78,118,h);
+
+  drawRing(rG,defs,CX,CY,120,142,
+    DAY_NAMES.map((d,i)=>({label:d.replace("יום ",""),sefi:DAY_SEF[i],active:i===dayJs})),7,5);
+
+  drawRing(rG,defs,CX,CY,144,162,
+    WEEK_PTZ.map((p,i)=>({label:`שבוע ${toHN(i+1)}`,sefi:p,active:(i+1)===week,partzuf:true})),6.5,5);
+
+  drawRing(rG,defs,CX,CY,164,186,
+    MONTH_NAMES.map((m,i)=>({label:m,sefi:MONTH_SEF[i],active:i===mi})),6,4.5);
+
+  /* ── Shmita ring (188-203) ── */
+  drawRing(rG,defs,CX,CY,188,203,
+    SHMITA_L.map((s,i)=>({label:s,sefi:SHMITA_SEF[i],active:i===sPos})),5.5,4);
+
+  /* ── Ring title labels — drawn at 12-o'clock inside each ring band ── */
+  drawRingTitle(rG,defs,CX,CY,131,'יום');       // day ring mid  120-142
+  drawRingTitle(rG,defs,CX,CY,153,'שבוע');      // week ring mid 144-162
+  drawRingTitle(rG,defs,CX,CY,175,'חודש');      // month ring mid 164-186
+  drawRingTitle(rG,defs,CX,CY,196,'שמיטה');     // shmita ring mid 188-203
+
+  /* Centre */
+  const cg=document.getElementById("cinfo");
+  cg.innerHTML="";
+  const [w1,w2]=HOUR_NAMES[h].split(" ");
+  // Current time string for centre
+  const _cn=new Date(),_ch=_cn.getHours(),_cm=String(_cn.getMinutes()).padStart(2,'0');
+  const _ch12=(_ch%12)||12,_cap=_ch<12?"AM":"PM";
+  const centreTime=`${_ch12}:${_cm} ${_cap}`;
+  [
+    {t:w1,          fs:18,fill:"#FFF9C4",          flt:"url(#tglow2)",dy:-28,fw:"900"},
+    {t:w2,          fs:18,fill:"#FFF9C4",          flt:"url(#tglow2)",dy:-8, fw:"900"},
+    {t:centreTime,  fs:13,fill:"#80D8FF",           flt:"url(#tglow)", dy:11, fw:"300",tag:"centre-time"},
+    {t:'שעה',fs:9,fill:"rgba(215,182,42,.85)",flt:null,dy:26, fw:"400"},
+  ].forEach(ln=>{
+    const el=mk("text",{x:CX,y:CY+ln.dy,"font-size":ln.fs,
+      "font-family":"Frank Ruhl Libre, Arial Hebrew, Noto Sans Hebrew, David, serif",fill:ln.fill,
+      "font-weight":ln.fw,"text-anchor":"middle","dominant-baseline":"central"});
+    if(ln.tag) el.setAttribute("data-centre-time","1");
+    if(ln.flt) el.setAttribute("filter",ln.flt);
+    el.textContent=ln.t;
+    cg.appendChild(el);
+  });
+
+  document.getElementById("fireBg").setAttribute("opacity","0.64");
+  buildWheel(h);
+}
+
+/* ═══════════════════════════════════════
+   TICK
+═══════════════════════════════════════ */
+let lastMin=-1;
+function tick() {
+  const now=new Date(),h=now.getHours(),m=now.getMinutes();
+  const mm=String(m).padStart(2,'0');
+  const ss=String(now.getSeconds()).padStart(2,'0');
+  const h12=(h%12)||12,ap=h<12?"AM":"PM";
+  document.getElementById("clock").textContent=`${h12}:${mm}:${ss} ${ap}`;
+  if(h!==lastHour){ update(); return; }
+  // Update centre time every minute
+  if(m!==lastMin){
+    lastMin=m;
+    const ci=document.getElementById("cinfo");
+    if(ci){
+      const tEl=ci.querySelector('[data-centre-time]');
+      if(tEl) tEl.textContent=`${h12}:${mm} ${ap}`;
+    }
+  }
+}
+
+/* ═══════════════════════════════════════
+   RESIZE — recenter wheel
+═══════════════════════════════════════ */
+let _rt;
+window.addEventListener("resize",()=>{
+  clearTimeout(_rt);
+  _rt=setTimeout(()=>buildWheel(lastHour),120);
+});
+
+/* ═══════════════════════════════════════
+   BOOT
+═══════════════════════════════════════ */
+update();
+animateFire();
+setInterval(tick,1000);
+
+/* ═══════════════════════════════════════
+   BACKGROUND SWITCHER
+   6 presets — user picks, saved to localStorage
+═══════════════════════════════════════ */
+const BG_PRESETS = {
+  default: {
+    bg: '#05030D',
+    before: `
+      radial-gradient(ellipse 70% 50% at 50% 30%,  rgba(255,200,0,.22)    0%, transparent 52%),
+      radial-gradient(ellipse 45% 35% at 8% 42%,   rgba(30,140,255,.20)   0%, transparent 58%),
+      radial-gradient(ellipse 45% 35% at 92% 42%,  rgba(220,40,60,.18)    0%, transparent 58%),
+      radial-gradient(ellipse 35% 28% at 15% 78%,  rgba(0,210,100,.16)    0%, transparent 55%),
+      radial-gradient(ellipse 35% 28% at 85% 78%,  rgba(210,80,255,.16)   0%, transparent 55%),
+      radial-gradient(ellipse 50% 30% at 50% 96%,  rgba(130,80,255,.18)   0%, transparent 58%),
+      radial-gradient(ellipse 28% 22% at 50% 52%,  rgba(255,220,0,.10)    0%, transparent 48%),
+      radial-gradient(ellipse 100% 100% at 50% 50%, rgba(15,8,35,0) 0%, rgba(5,3,13,1) 100%)`
+  },
+  midnight: {
+    bg: '#000510',
+    before: `
+      radial-gradient(ellipse 80% 60% at 50% 20%,  rgba(0,80,200,.25)     0%, transparent 55%),
+      radial-gradient(ellipse 50% 40% at 10% 50%,  rgba(0,120,255,.18)    0%, transparent 55%),
+      radial-gradient(ellipse 50% 40% at 90% 50%,  rgba(80,0,200,.18)     0%, transparent 55%),
+      radial-gradient(ellipse 40% 30% at 50% 90%,  rgba(0,200,255,.12)    0%, transparent 55%),
+      radial-gradient(ellipse 100% 100% at 50% 50%, rgba(0,5,16,0) 0%, rgba(0,5,16,1) 100%)`
+  },
+  fire: {
+    bg: '#0d0000',
+    before: `
+      radial-gradient(ellipse 70% 50% at 50% 30%,  rgba(255,120,0,.28)    0%, transparent 52%),
+      radial-gradient(ellipse 50% 40% at 20% 60%,  rgba(255,60,0,.20)     0%, transparent 55%),
+      radial-gradient(ellipse 50% 40% at 80% 60%,  rgba(200,30,0,.20)     0%, transparent 55%),
+      radial-gradient(ellipse 40% 30% at 50% 90%,  rgba(255,80,0,.15)     0%, transparent 55%),
+      radial-gradient(ellipse 100% 100% at 50% 50%, rgba(13,0,0,0) 0%, rgba(13,0,0,1) 100%)`
+  },
+  forest: {
+    bg: '#000d04',
+    before: `
+      radial-gradient(ellipse 70% 50% at 50% 30%,  rgba(0,180,60,.20)     0%, transparent 52%),
+      radial-gradient(ellipse 50% 40% at 15% 55%,  rgba(0,220,80,.15)     0%, transparent 55%),
+      radial-gradient(ellipse 50% 40% at 85% 55%,  rgba(0,160,40,.15)     0%, transparent 55%),
+      radial-gradient(ellipse 40% 30% at 50% 88%,  rgba(0,100,200,.12)    0%, transparent 55%),
+      radial-gradient(ellipse 100% 100% at 50% 50%, rgba(0,13,4,0) 0%, rgba(0,13,4,1) 100%)`
+  },
+  violet: {
+    bg: '#060010',
+    before: `
+      radial-gradient(ellipse 70% 50% at 50% 28%,  rgba(140,0,255,.28)    0%, transparent 52%),
+      radial-gradient(ellipse 50% 40% at 12% 55%,  rgba(180,0,255,.20)    0%, transparent 55%),
+      radial-gradient(ellipse 50% 40% at 88% 55%,  rgba(100,0,200,.20)    0%, transparent 55%),
+      radial-gradient(ellipse 40% 30% at 50% 90%,  rgba(200,80,255,.15)   0%, transparent 55%),
+      radial-gradient(ellipse 100% 100% at 50% 50%, rgba(6,0,16,0) 0%, rgba(6,0,16,1) 100%)`
+  },
+  gold: {
+    bg: '#0a0800',
+    before: `
+      radial-gradient(ellipse 70% 55% at 50% 28%,  rgba(255,200,0,.30)    0%, transparent 52%),
+      radial-gradient(ellipse 50% 40% at 15% 55%,  rgba(255,160,0,.18)    0%, transparent 55%),
+      radial-gradient(ellipse 50% 40% at 85% 55%,  rgba(200,120,0,.18)    0%, transparent 55%),
+      radial-gradient(ellipse 40% 30% at 50% 90%,  rgba(255,180,0,.15)    0%, transparent 55%),
+      radial-gradient(ellipse 100% 100% at 50% 50%, rgba(10,8,0,0) 0%, rgba(10,8,0,1) 100%)`
+  },
+  plain: {
+    bg: '#05030D',
+    before: `radial-gradient(ellipse 100% 100% at 50% 50%, rgba(5,3,13,0) 0%, rgba(5,3,13,1) 100%)`,
+    noCanvas: true
+  }
+};
+
+let _currentBg = localStorage.getItem('kabbalah-bg') || 'default';
+
+function applyBg(name) {
+  const preset = BG_PRESETS[name] || BG_PRESETS.default;
+  document.documentElement.style.setProperty('--bg', preset.bg);
+  document.body.style.background = preset.bg;
+  let styleEl = document.getElementById('dynamic-bg-style');
+  if (!styleEl) {
+    styleEl = document.createElement('style');
+    styleEl.id = 'dynamic-bg-style';
+    document.head.appendChild(styleEl);
+  }
+  styleEl.textContent = `body::before { background: ${preset.before}; }`;
+  // Show/hide geometric canvas
+  const cv = document.getElementById('bgCanvas');
+  if (cv) cv.style.display = preset.noCanvas ? 'none' : 'block';
+  _currentBg = name;
+  localStorage.setItem('kabbalah-bg', name);
+}
+
+function setBg(name) {
+  applyBg(name);
+  // Update active state on buttons
+  document.querySelectorAll('.bg-option').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('bg-' + name);
+  if (btn) btn.classList.add('active');
+  toggleBgPanel(); // close panel
+}
+
+function toggleBgPanel() {
+  document.getElementById('bg-panel').classList.toggle('open');
+}
+
+// Close bg panel when clicking outside
+document.addEventListener('click', function(e) {
+  const panel = document.getElementById('bg-panel');
+  const btn   = document.getElementById('bg-toggle');
+  if (panel && !panel.contains(e.target) && e.target !== btn) {
+    panel.classList.remove('open');
+  }
+});
+
+// Apply saved background on load
+applyBg(_currentBg);
+const savedBtn = document.getElementById('bg-' + _currentBg);
+if (savedBtn) savedBtn.classList.add('active');
+
+/* ═══════════════════════════════════════
+   VIEW SWITCHER — rings ↔ stacked cards
+═══════════════════════════════════════ */
+let _stackView = false;
+
+function toggleView() {
+  _stackView = !_stackView;
+  const sv  = document.getElementById('stack-view');
+  const rw  = document.getElementById('ring-wrap');
+  const hw  = document.getElementById('hour-wheel');
+  const btn = document.getElementById('view-toggle');
+
+  if (_stackView) {
+    sv.classList.add('active');
+    rw.style.visibility = 'hidden';
+    hw.style.visibility = 'hidden';
+    btn.textContent = '◎';
+    btn.title = 'חזור לטבעות';
+    buildStackView();
+  } else {
+    sv.classList.remove('active');
+    rw.style.visibility = 'visible';
+    hw.style.visibility = 'visible';
+    btn.textContent = '⊞';
+    btn.title = 'תצוגת כרטיסים';
+  }
+}
+
+function buildStackView() {
+  const sv  = document.getElementById('stack-view');
+  const now = new Date();
+  const h   = now.getHours();
+  const heb = getHebDate();
+  const dayJs  = now.getDay();
+  const week   = Math.ceil(heb.d / 7);
+  const mi     = mIdx(heb.m);
+  const sPos   = (heb.y - 1) % 7;
+  const weekPtz = WEEK_PTZ[(week-1)%4] || 'מלכות';
+  const mSef   = MONTH_SEF[Math.max(0,mi)];
+  const domSef = domSefirah(heb.d);
+  const yComps = yearComponents(heb.y);
+  const yRev   = [...yComps].reverse();
+  const yLabels = ['שנה','עשרות','מאות','אלפים'];
+
+  // Helper: build abbreviation line for a sefirah
+  function sabLine(sef, list) {
+    return sefAbbrevLine(sef, list);
   }
 
-  let _devOpen = false;
-  const _dt = new Image();
-  Object.defineProperty(_dt, 'id', {
-    get: function () { _devOpen = true; return 'x'; }
-  });
-  setInterval(function () {
-    _devOpen = false;
-    console.log('%c', _dt);
-    if (_devOpen) {
-      console.clear();
-      console.log(
-        '%c(c) 2025 Michael Gurshumov — Proprietary. Inspection prohibited.',
-        'color:#FFD700;font-size:16px;font-weight:bold;background:#000;padding:8px'
-      );
-    }
-  }, 1500);
+  // Each row: [label, value, sefirah, abbrevHtml]
+  const rows = [
+    { label:'שעה',        value: HOUR_NAMES[h],
+      sef: HOUR_SEF[h],   abbr: sefAbbrev7(HOUR_SEF[h]) },
+    { label:'יום',        value: DAY_NAMES[dayJs],
+      sef: DAY_SEF[dayJs],abbr: sefAbbrev7(DAY_SEF[dayJs]) },
+    { label:'שבוע',       value: `שבוע ${toHN(week)}`,
+      sef: weekPtz,        abbr: sefAbbrev4(weekPtz) },
+    { label:'יום בחודש', value: `${toHN(heb.d)} בחודש`,
+      sef: domSef,         abbr: domSef==='כתר' ? sefAbbrev8(domSef) : sefAbbrev7(domSef) },
+    { label:'חודש',       value: heb.m,
+      sef: mSef,           abbr: sefAbbrev7(mSef) },
+    { label:'שמיטה',     value: SHMITA_L[sPos]===6 ? 'שנת שמיטה' : `שמיטה ${SHMITA_L[sPos]}`,
+      sef: SHMITA_SEF[sPos], abbr: sefAbbrev7(SHMITA_SEF[sPos]) },
+    { label:'יובל',       value: 'ס״ז',
+      sef: 'יסוד',         abbr: sefAbbrev7('יסוד'),
+      valStyle: 'color:var(--tiferet);font-weight:900;text-shadow:0 0 8px rgba(255,214,0,.8)' },
+    ...yRev.map((comp,i) => ({
+      label: yLabels[i] || '',
+      value: comp.str,
+      sef:   comp.sef,
+      abbr:  comp.sef === 'כתר' ? sefAbbrev8(comp.sef) : sefAbbrev7(comp.sef)
+    }))
+  ];
 
-  document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
-  document.addEventListener('keydown', function(e) {
-    if (
-      (e.ctrlKey && ['u','U','s','S'].includes(e.key)) ||
-      (e.ctrlKey && e.shiftKey && ['i','I','j','J','c','C'].includes(e.key)) ||
-      e.key === 'F12'
-    ) { e.preventDefault(); e.stopPropagation(); return false; }
-  });
+  const sefColors = {
+    'חסד':'var(--chesed)','גבורה':'var(--gevurah)','תפארת':'var(--tiferet)',
+    'נצח':'var(--netzach)','הוד':'var(--hod)','יסוד':'var(--yesod)',
+    'מלכות':'var(--malchut)','כתר':'#E8E8FF'
+  };
 
-  const _chunks = ["Ci8qIOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKV", "kOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKV", "kAogICBEQVRBCuKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKV", "kOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKV", "kOKVkOKVkCAqLwpjb25zdCBIT1VSX05BTUVTID0gWwogICLXoNeT15DXmSDXoNeZ15DXkyIsIteg15PX", "mdeQINeg15nXk9eQIiwi16DXkNeT15kg16DXkNeZ15MiLCLXk9eQ15nXoCDXmdeQ15PXoCIsIteT15DX", "oNeZINeZ15DXoNeTIiwi15PXmdeQ16Ag15nXk9eQ16AiLAogICLXmdeU15XXlCDXkNeU15nXlCIsIteZ", "15TXlNeVINeQ15TXlNeZIiwi15nXldeU15Qg15DXmdeU15QiLCLXlNeV15TXmSDXlNeZ15TXkCIsIteU", "15XXmdeUINeU15nXkNeUIiwi15TXlNeV15kg15TXlNeZ15AiLAogICLXldeU15nXlCDXmdeU15DXlCIs", "IteV15TXlNeZINeZ15TXlNeQIiwi15XXmdeU15Qg15nXkNeU15QiLCLXlNeZ15TXlSDXlNeQ15TXmSIs", "IteU15nXldeUINeU15DXmdeUIiwi15TXlNeZ15Ug15TXlNeQ15kiLAogICLXkNeT16DXmSDXkNeZ16DX", "kyIsIteQ15PXmdegINeQ15nXk9egIiwi15DXoNeZ15Mg15DXoNeT15kiLCLXk9eg15nXkCDXmdeg15PX", "kCIsIteT16DXkNeZINeZ16DXkNeTIiwi15PXmdeg15Ag15nXk9eg15AiCl07CmNvbnN0IEhPVVJfU0VG", "ID0gWwogICfXl9eh15MnLCfXkteR15XXqNeUJywn16rXpNeQ16jXqicsJ9eg16bXlycsJ9eU15XXkycs", "J9eZ16HXldeTJywn157XnNeb15XXqicsCiAgJ9eX16HXkycsJ9eS15HXldeo15QnLCfXqtek15DXqNeq", "Jywn16DXpteXJywn15TXldeTJywn15nXodeV15MnLCfXntec15vXldeqJywKICAn15fXodeTJywn15LX", "kdeV16jXlCcsJ9eq16TXkNeo16onLCfXoNem15cnLCfXlNeV15MnLCfXmdeh15XXkycsJ9ee15zXm9eV", "16onLAogICfXl9eh15MnLCfXkteR15XXqNeUJywn16rXpNeQ16jXqicKXTsKY29uc3QgREFZX05BTUVT", "ICAgPSBbJ9eZ15XXnSDXkCcsJ9eZ15XXnSDXkScsJ9eZ15XXnSDXkicsJ9eZ15XXnSDXkycsJ9eZ15XX", "nSDXlCcsJ9eZ15XXnSDXlScsJ9ep15HXqiddOwpjb25zdCBEQVlfU0VGICAgICA9IFsn15fXodeTJywn", "15LXkdeV16jXlCcsJ9eq16TXkNeo16onLCfXoNem15cnLCfXlNeV15MnLCfXmdeh15XXkycsJ9ee15zX", "m9eV16onXTsKY29uc3QgTU9OVEhfTkFNRVMgPSBbJ9eq16nXqNeZJywn15fXqdeV15XXnycsJ9eb16HX", "nNeVJywn15jXkdeqJywn16nXkdeYJywn15DXk9eoJywn16DXmdeh158nLCfXkNeZ15nXqCcsJ9eh15nX", "ldefJywn16rXnteV15YnLCfXkNeRJywn15DXnNeV15wnXTsKY29uc3QgTU9OVEhfU0VGICAgPSBbJ9eX", "16HXkycsJ9eS15HXldeo15QnLCfXqtek15DXqNeqJywn16DXpteXJywn15TXldeTJywn15nXodeV15Mn", "LCfXl9eh15MnLCfXkteR15XXqNeUJywn16rXpNeQ16jXqicsJ9eg16bXlycsJ9eU15XXkycsJ9eZ16HX", "ldeTJ107CmNvbnN0IFdFRUtfUFRaICAgID0gWyfXl9eb157XlCcsJ9eR15nXoNeUJywn16rXpNeQ16jX", "qicsJ9ee15zXm9eV16onXTsKY29uc3QgU0hNSVRBX0wgICAgPSBbJ9eQJywn15EnLCfXkicsJ9eTJywn", "15QnLCfXlScsJ9ep157XmdeY15QnXTsKY29uc3QgU0hNSVRBX1NFRiAgPSBbJ9eX16HXkycsJ9eS15HX", "ldeo15QnLCfXqtek15DXqNeqJywn16DXpteXJywn15TXldeTJywn15nXodeV15MnLCfXntec15vXldeq", "J107Cgpjb25zdCBMRVRURVJfU0VGID0gewogICLXkCI6Iteb16rXqCIsIteRIjoi15fXm9ee15QiLCLX", "kiI6IteR15nXoNeUIiwi15MiOiLXl9eh15MiLCLXlCI6IteS15HXldeo15QiLCLXlSI6Iteq16TXkNeo", "16oiLAogICLXliI6Iteg16bXlyIsIteXIjoi15TXldeTIiwi15giOiLXmdeh15XXkyIsIteZIjoi15fX", "m9ee15QiLCLXmyI6Iteb16rXqCIsItecIjoi16rXpNeQ16jXqiIsCiAgIteeIjoi15HXmdeg15QiLCLX", "oCI6Iteg16bXlyIsItehIjoi15TXldeTIiwi16IiOiLXl9eh15MiLCLXpCI6IteS15HXldeo15QiLCLX", "piI6IteZ16HXldeTIiwKICAi16ciOiLXntec15vXldeqIiwi16giOiLXlNeV15MiLCLXqSI6IteQ16ki", "LCLXqiI6Iteq16TXkNeo16oiCn07CgovKgogKiBZRUFSIFBMQUNFLVZBTFVFIFNFRklST1Qg4oCUIGVh", "Y2ggbnVtZXJpYyBjb21wb25lbnQgbWFwcGVkIHNlcGFyYXRlbHkKICogSHVuZHJlZHMgc3RheSBhcyBP", "TkUgY29tYmluZWQgdW5pdCAo16rXqT03MDA915TXldeTLCBub3Qg16or16kpCiAqLwovKgogKiBZZWFy", "IHBsYWNlLXZhbHVlIHNlZmlyb3Qg4oCUIGFsbCB1c2UgdGhlIDctY3ljbGU6INeX16HXkyDXkteR15XX", "qNeUINeq16TXkNeo16og16DXpteXINeU15XXkyDXmdeh15XXkyDXntec15vXldeqCiAqIFBvc2l0aW9u", "IDE915fXodeTLCAyPdeS15HXldeo15QsIDM916rXpNeQ16jXqiwgND3XoNem15csIDU915TXldeTLCA2", "PdeZ16HXldeTLCA3Pdee15zXm9eV16ogKHRoZW4gcmVwZWF0cykKICogRm9yIHllYXIgNTc4Njog15Qo", "NSk915TXldeTICDXqtepKDcwMC9wb3M3KT3Xntec15vXldeqICDXpCg4MC9wb3M4KT3Xl9eh15MgINeV", "KDYpPdeZ16HXldeTCiAqLwpjb25zdCBIVU5EUkVEU19TRUYgPSB7CiAgMTAwOifXl9eh15MnLCAyMDA6", "J9eS15HXldeo15QnLCAzMDA6J9eq16TXkNeo16onLCA0MDA6J9eg16bXlycsCiAgNTAwOifXlNeV15Mn", "LCAgNjAwOifXmdeh15XXkycsICA3MDA6J9ee15zXm9eV16onLCA4MDA6J9eX16HXkycsICAgOTAwOifX", "kteR15XXqNeUJwp9Owpjb25zdCBIVU5EUkVEU19TVFIgPSB7CiAgMTAwOifXpycsIDIwMDon16gnLCAz", "MDA6J9epJywgNDAwOifXqicsCiAgNTAwOifXqtenJywgNjAwOifXqteoJywgNzAwOifXqtepJywgODAw", "OifXqteqJywgOTAwOifXqteq16cnCn07CmNvbnN0IFRFTlNfU0VGID0gewogIDEwOifXl9eh15MnLCAy", "MDon15LXkdeV16jXlCcsIDMwOifXqtek15DXqNeqJywgNDA6J9eg16bXlycsCiAgNTA6J9eU15XXkycs", "ICA2MDon15nXodeV15MnLCAgNzA6J9ee15zXm9eV16onLCA4MDon15fXodeTJywgIDkwOifXkteR15XX", "qNeUJwp9Owpjb25zdCBURU5TX1NUUiA9IHsKICAxMDon15knLDIwOifXmycsMzA6J9ecJyw0MDon154n", "LDUwOifXoCcsNjA6J9ehJyw3MDon16InLDgwOifXpCcsOTA6J9emJwp9Owpjb25zdCBVTklUU19TRUYg", "PSB7CiAgMTon15fXodeTJywgMjon15LXkdeV16jXlCcsIDM6J9eq16TXkNeo16onLCA0OifXoNem15cn", "LAogIDU6J9eU15XXkycsICA2OifXmdeh15XXkycsICA3OifXntec15vXldeqJywgODon15fXodeTJywg", "IDk6J9eS15HXldeo15QnCn07CmNvbnN0IFVOSVRTX1NUUiA9IHsKICAxOifXkCcsMjon15EnLDM6J9eS", "Jyw0OifXkycsNTon15QnLDY6J9eVJyw3OifXlicsODon15cnLDk6J9eYJwp9Owpjb25zdCBNSUxfU0VG", "ID0gewogIDE6J9eX16HXkycsIDI6J9eS15HXldeo15QnLCAzOifXqtek15DXqNeqJywgNDon16DXpteX", "JywKICA1OifXlNeV15MnLCAgNjon15nXodeV15MnLCAgNzon157XnNeb15XXqicKfTsKCmNvbnN0IFNF", "RklfS0VZID0gewogICfXm9eq16gnOidrZXRlcicsCiAgJ9eX16HXkyc6J2NoZXNlZCcsJ9eS15HXldeo", "15QnOidnZXZ1cmFoJywn16rXpNeQ16jXqic6J3RpZmVyZXQnLAogICfXoNem15cnOiduZXR6YWNoJywn", "15TXldeTJzonaG9kJywn15nXodeV15MnOid5ZXNvZCcsJ9ee15zXm9eV16onOidtYWxjaHV0Jwp9OwoK", "LyogVml2aWQgU1ZHIGZpbGwgcGVyIHNlZmlyYWggKi8KY29uc3QgU0VGSV9DT0xPUiA9IHsKICBrZXRl", "cjoncmdiYSgyMzIsMjMyLDI1NSwuOTUpJywKICBjaGVzZWQ6J3JnYmEoNjYsMTY1LDI0NSwuOTUpJywg", "IGdldnVyYWg6J3JnYmEoMjM5LDgzLDgwLC45NSknLAogIHRpZmVyZXQ6J3JnYmEoMjU1LDIyMCwwLC45", "NSknLCAgbmV0emFjaDoncmdiYSgwLDIzMCwxMTgsLjk1KScsCiAgaG9kOidyZ2JhKDIzNCwxMjgsMjUy", "LC45NSknLCAgICB5ZXNvZDoncmdiYSgxNzksMTM2LDI1NSwuOTUpJywKICBtYWxjaHV0OidyZ2JhKDI1", "NSwxNDUsMCwuOTUpJwp9OwoKLyog4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ", "4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ", "4pWQ4pWQ4pWQ4pWQ4pWQ4pWQCiAgIFVUSUxJVElFUwrilZDilZDilZDilZDilZDilZDilZDilZDilZDi", "lZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDi", "lZDilZDilZDilZDilZDilZDilZDilZDilZDilZAgKi8KY29uc3QgTlMgPSAiaHR0cDovL3d3dy53My5v", "cmcvMjAwMC9zdmciOwoKZnVuY3Rpb24gbWsodGFnLCBhKSB7CiAgY29uc3QgZWwgPSBkb2N1bWVudC5j", "cmVhdGVFbGVtZW50TlMoTlMsIHRhZyk7CiAgZm9yIChjb25zdCBbayx2XSBvZiBPYmplY3QuZW50cmll", "cyhhfHx7fSkpIGVsLnNldEF0dHJpYnV0ZShrLHYpOwogIHJldHVybiBlbDsKfQoKZnVuY3Rpb24gc0tl", "eShzKSAgICAgeyByZXR1cm4gU0VGSV9LRVlbc10gfHwgJ2NoZXNlZCc7IH0KZnVuY3Rpb24gc1N2Z0Ns", "cyhzKSAgeyByZXR1cm4gJ3JzLScgKyBzS2V5KHMpOyB9CmZ1bmN0aW9uIHNDb2xvcihzKSAgIHsgcmV0", "dXJuIFNFRklfQ09MT1Jbc0tleShzKV0gfHwgU0VGSV9DT0xPUi50aWZlcmV0OyB9CmZ1bmN0aW9uIGRs", "U2VmKHMpIHsKICBjb25zdCBrID0gc0tleShzKTsKICByZXR1cm4gJ2RsLXNlZiBkbC1zLScgKyAoayA9", "PT0gJ3RpZmVyZXQnICYmIHMgPT09ICfXm9eq16gnID8gJ2tldGVyJyA6IGspOwp9CgovKiBwaWxsKG5h", "bWUsIHNlZmlyYWgsIGFiYnJldkh0bWwpIOKAlCBjb2xvcmVkIGJvcmRlcmVkIGNoaXAgd2l0aCBvcHRp", "b25hbCBzdGF0dXMgbGluZSAqLwpmdW5jdGlvbiBwaWxsKG5hbWUsIHNlZiwgYWJicmV2SHRtbCkgewog", "IHJldHVybiBwaWxsV2l0aEV4dHJhKG5hbWUsIHNlZiwgYWJicmV2SHRtbCwgbnVsbCk7Cn0KCi8qIHBp", "bGxXaXRoRXh0cmEg4oCUIHBpbGwgd2l0aCBvcHRpb25hbCBleHRyYSBIVE1MIHJvdyBiZWxvdyB0aGUg", "YWJicmV2IGxpbmUgKi8KZnVuY3Rpb24gcGlsbFdpdGhFeHRyYShuYW1lLCBzZWYsIGFiYnJldkh0bWws", "IGV4dHJhSHRtbCkgewogIGNvbnN0IGsgPSBzZWYgPT09ICfXm9eq16gnID8gJ2tldGVyJyA6IHNLZXko", "c2VmKTsKICBjb25zdCBhYkxpbmUgPSBhYmJyZXZIdG1sCiAgICA/IGA8c3BhbiBjbGFzcz0ic2FiLWxp", "bmUiPiR7YWJicmV2SHRtbH08L3NwYW4+YAogICAgOiAnJzsKICBjb25zdCBleExpbmUgPSBleHRyYUh0", "bWwgfHwgJyc7CiAgcmV0dXJuIGA8c3BhbiBjbGFzcz0icGlsbCBwaWxsLSR7a30iPmArCiAgICBgPHNw", "YW4gY2xhc3M9InBpbGwtYm9keSI+YCsKICAgIGA8c3BhbiBjbGFzcz0icGlsbC1uYW1lIj4ke25hbWV9", "PC9zcGFuPmArCiAgICBgPHNwYW4gY2xhc3M9InBpbGwtdGFnIj4ke3NlZn08L3NwYW4+YCsKICAgIGA8", "L3NwYW4+YCsKICAgIGFiTGluZSsKICAgIGV4TGluZSsKICAgIGA8L3NwYW4+YDsKfQoKLyogeWVhci12", "YWx1ZSBjaGlwICovCmZ1bmN0aW9uIHl2Q2hpcChzdHIsIGxibCwgc2VmKSB7CiAgY29uc3QgayA9IHNl", "ZiA9PT0gJ9eb16rXqCcgPyAna2V0ZXInIDogc0tleShzZWYpOwogIHJldHVybiBgPHNwYW4gY2xhc3M9", "Inl2LWNoaXAgZGwtcy0ke2t9Ij5gKwogICAgYDxzcGFuIGNsYXNzPSJ5di10b3AiPmArCiAgICBgPHNw", "YW4gY2xhc3M9Inl2LXN0ciI+JHtzdHJ9PC9zcGFuPmArCiAgICBgPHNwYW4gY2xhc3M9Inl2LWRhc2gi", "PuKAlDwvc3Bhbj5gKwogICAgYDxzcGFuIGNsYXNzPSJ5di1zZWYiPiR7c2VmfTwvc3Bhbj5gKwogICAg", "YDwvc3Bhbj5gKwogICAgYDwvc3Bhbj5gOwp9CgpmdW5jdGlvbiB0b0hOKG4pIHsKICBjb25zdCB0ID0g", "WyIiLCLXkCIsIteRIiwi15IiLCLXkyIsIteUIiwi15UiLCLXliIsIteXIiwi15giLAogICAgIteZIiwi", "15nXkCIsIteZ15EiLCLXmdeSIiwi15nXkyIsIteY15UiLCLXmNeWIiwi15nXliIsIteZ15ciLCLXmdeY", "IiwKICAgICLXmyIsIteb15AiLCLXm9eRIiwi15vXkiIsIteb15MiLCLXm9eUIiwi15vXlSIsIteb15Yi", "LCLXm9eXIiwi15vXmCIsCiAgICAi15wiLCLXnNeQIiwi15zXkSIsItec15IiLCLXnNeTIiwi15zXlCIs", "Itec15UiLCLXnNeWIiwi15zXlyIsItec15giLAogICAgIteeIiwi157XkCIsItee15EiLCLXnteSIiwi", "157XkyIsItee15QiLCLXnteVIiwi157XliIsItee15ciLCLXnteYIiwi16AiXTsKICByZXR1cm4gdFtu", "XSB8fCBTdHJpbmcobik7Cn0KCi8qCiAqIHllYXJMZXR0ZXJzKHkpIOKAlCByZXR1cm5zIGp1c3QgdGhl", "IGxhc3QtMyBhYmJyZXZpYXRpb24gc3RyaW5nIGUuZy4gIteq16nXpNeVIgogKiBmdWxsWWVhclN0cih5", "KSDigJQgZS5nLiAi15TXs9eq16nXpNe015UiCiAqIHllYXJDb21wb25lbnRzKHkpIOKAlCByZXR1cm5z", "IGFycmF5IG9mIHtzdHIsIHZhbCwgc2VmfSBmb3IgZGlzcGxheQogKi8KZnVuY3Rpb24geWVhckxldHRl", "cnMoeSkgewogIGNvbnN0IG1vZD15JTEwMDA7CiAgY29uc3QgaGg9TWF0aC5mbG9vcihtb2QvMTAwKSwg", "dHQ9TWF0aC5mbG9vcigobW9kJTEwMCkvMTApLCBvbz1tb2QlMTA7CiAgY29uc3QgaHVuZFY9aGgqMTAw", "LCB0ZW5WPXR0KjEwOwogIGxldCByPUhVTkRSRURTX1NUUltodW5kVl18fCIiOwogIC8vIHNwZWNpYWwg", "R2Vyc2hheWltIGNhc2VzCiAgaWYgKHR0PT09MSYmb289PT01KSByKz0i15jXlSI7CiAgZWxzZSBpZiAo", "dHQ9PT0xJiZvbz09PTYpIHIrPSLXmNeWIjsKICBlbHNlIHsKICAgIGlmICh0ZW5WKSByKz1URU5TX1NU", "Ult0ZW5WXXx8IiI7CiAgICBpZiAob28pICAgcis9VU5JVFNfU1RSW29vXXx8IiI7CiAgfQogIHJldHVy", "biByOwp9CgpmdW5jdGlvbiBmdWxsWWVhclN0cih5KSB7CiAgY29uc3QgbWlsPU1hdGguZmxvb3IoeS8x", "MDAwKTsKICBjb25zdCBtSD1bIiIsIteQIiwi15EiLCLXkiIsIteTIiwi15QiLCLXlSIsIteWIiwi15ci", "LCLXmCJdW21pbF18fCIiOwogIGNvbnN0IGNoYXJzPXllYXJMZXR0ZXJzKHkpLnNwbGl0KCIiKTsKICBp", "ZiAoY2hhcnMubGVuZ3RoPj0yKSBjaGFycy5zcGxpY2UoY2hhcnMubGVuZ3RoLTEsMCwi17QiKTsKICBl", "bHNlIGNoYXJzLnB1c2goItezIik7CiAgcmV0dXJuIG1IKyLXsyIrY2hhcnMuam9pbigiIik7Cn0KCi8q", "CiAqIFJldHVybnMgYXJyYXkgb2YgcGxhY2UtdmFsdWUgY29tcG9uZW50cyBmb3IgdGhlIHllYXIsIGVh", "Y2ggd2l0aDoKICogICB7IHN0cjogIteq16kiLCBsYWJlbDogIjcwMCDigJQg16nXkdeiINee15DXldeq", "Iiwgc2VmOiAi15TXldeTIiwgY3NzOiAiaG9kIiB9CiAqLwpmdW5jdGlvbiB5ZWFyQ29tcG9uZW50cyh5", "KSB7CiAgY29uc3QgbWlsPU1hdGguZmxvb3IoeS8xMDAwKTsKICBjb25zdCBtb2Q9eSUxMDAwOwogIGNv", "bnN0IGhoPU1hdGguZmxvb3IobW9kLzEwMCksIHR0PU1hdGguZmxvb3IoKG1vZCUxMDApLzEwKSwgb289", "bW9kJTEwOwogIGNvbnN0IGh1bmRWPWhoKjEwMCwgdGVuVj10dCoxMDsKICBjb25zdCBtaWxTdHI9WyIi", "LCLXkCIsIteRIiwi15IiLCLXkyIsIteUIiwi15UiLCLXliIsIteXIiwi15giXVttaWxdfHwiIjsKICBj", "b25zdCBtaWxMYWJlbHM9WyIiLCLXkNeX15MiLCLXqdeg15nXmdedIiwi16nXnNeV16nXlCIsIteQ16jX", "kdei15QiLCLXl9ee16nXlCIsItep16nXlCIsItep15HXoteUIl07CiAgY29uc3QgdGVuTGFiZWxzPXsx", "MDoi16LXqdeo15QiLDIwOiLXotep16jXmdedIiwzMDoi16nXnNeV16nXmdedIiw0MDoi15DXqNeR16LX", "mdedIiw1MDoi15fXnteZ16nXmdedIiwKICAgICAgICAgICAgICAgICAgIDYwOiLXqdep15nXnSIsNzA6", "Itep15HXoteZ150iLDgwOiLXqdee15XXoNeZ150iLDkwOiLXqtep16LXmdedIn07CiAgY29uc3QgdW5p", "dExhYmVscz17MToi15DXl9eqIiwyOiLXqdeq15nXmdedIiwzOiLXqdec15XXqSIsNDoi15DXqNeR16Ii", "LDU6IteX157XqSIsCiAgICAgICAgICAgICAgICAgICAgNjoi16nXqSIsNzoi16nXkdeiIiw4OiLXqdee", "15XXoNeUIiw5OiLXqtep16IifTsKICBjb25zdCBodW5kTGFiZWxzPXsxMDA6Itee15DXlCIsMjAwOiLX", "nteQ16rXmdeZ150iLDMwMDoi16nXnNepINee15DXldeqIiw0MDA6IteQ16jXkdeiINee15DXldeqIiwK", "ICAgICAgICAgICAgICAgICAgICA1MDA6IteX157XqSDXnteQ15XXqiIsNjAwOiLXqdepINee15DXldeq", "Iiw3MDA6Itep15HXoiDXnteQ15XXqiIsCiAgICAgICAgICAgICAgICAgICAgODAwOiLXqdee15XXoNeU", "INee15DXldeqIiw5MDA6Iteq16nXoiDXnteQ15XXqiJ9OwogIGNvbnN0IHBhcnRzPVtdOwogIGlmICht", "aWw+MCkgcGFydHMucHVzaCh7CiAgICBzdHI6IG1pbFN0cisi17MiLAogICAgbGFiZWw6IChtaWxMYWJl", "bHNbbWlsXXx8bWlsKSsiINeQ15zXpNeZ150iLAogICAgc2VmOiBNSUxfU0VGW21pbF18fCLXm9eq16gi", "LAogICAgY3NzOiBzS2V5KE1JTF9TRUZbbWlsXXx8Iteb16rXqCIpCiAgfSk7CiAgaWYgKGh1bmRWPjAp", "IHBhcnRzLnB1c2goewogICAgc3RyOiBIVU5EUkVEU19TVFJbaHVuZFZdfHwiIiwKICAgIGxhYmVsOiBo", "dW5kTGFiZWxzW2h1bmRWXXx8IiIsCiAgICBzZWY6IEhVTkRSRURTX1NFRltodW5kVl18fCLXl9eh15Mi", "LAogICAgY3NzOiBzS2V5KEhVTkRSRURTX1NFRltodW5kVl18fCLXl9eh15MiKQogIH0pOwogIGlmICh0", "ZW5WPjApIHBhcnRzLnB1c2goewogICAgc3RyOiBURU5TX1NUUlt0ZW5WXXx8IiIsCiAgICBsYWJlbDog", "dGVuTGFiZWxzW3RlblZdfHwiIiwKICAgIHNlZjogVEVOU19TRUZbdGVuVl18fCLXl9eh15MiLAogICAg", "Y3NzOiBzS2V5KFRFTlNfU0VGW3RlblZdfHwi15fXodeTIikKICB9KTsKICBpZiAob28+MCkgcGFydHMu", "cHVzaCh7CiAgICBzdHI6IFVOSVRTX1NUUltvb118fCIiLAogICAgbGFiZWw6IHVuaXRMYWJlbHNbb29d", "fHwiIiwKICAgIHNlZjogVU5JVFNfU0VGW29vXXx8Iteb16rXqCIsCiAgICBjc3M6IHNLZXkoVU5JVFNf", "U0VGW29vXXx8Iteb16rXqCIpCiAgfSk7CiAgcmV0dXJuIHBhcnRzOwp9CgpmdW5jdGlvbiB3ZWVrUHR6", "TGFiZWwod24sIHB0eikgewogIGNvbnN0IHN1Yj1bIteT17MiLCLXl9ezIiwi15bXtNeQINeT17MiLCLX", "oNeV16fXsyDXk9ezIl07CiAgcmV0dXJuIChzdWJbKHduLTEpJTRdfHwi15PXsyIpK3B0ejsKfQoKLyoK", "ICogRGF5LW9mLW1vbnRoIHNlZmlyYWg6CiAqICAgMSAo15ApID0g15vXqteoICDigJQg16jXkNepINeX", "15XXk9epCiAqICAgMzAgKNecKSA9INeb16rXqCAg4oCUINeo15DXqSDXl9eV15PXqQogKiAgIDLigJMy", "OTogY3ljbGUgb2YgNyBzdGFydGluZyBmcm9tINeX16HXkwogKiAgICAgcG9zaXRpb24gPSAoZGF5IC0g", "MikgJSA3ICDihpIgMD3Xl9eh15MgMT3XkteR15XXqNeUIDI916rXpNeQ16jXqiAzPdeg16bXlyA0PdeU", "15XXkyA1PdeZ16HXldeTIDY9157XnNeb15XXqgogKiAgIFZlcmlmeTogMiw5LDE2LDIzIOKGkiAoZC0y", "KSU3PTAg4oaSINeX16HXkyDinJMKICogICAgICAgICAgIDUsMTIsMTksMjYg4oaSIChkLTIpJTc9MyDi", "hpIg16DXpteXIOKckwogKi8KY29uc3QgQ1lDTEVfNyA9IFsn15fXodeTJywn15LXkdeV16jXlCcsJ9eq", "16TXkNeo16onLCfXoNem15cnLCfXlNeV15MnLCfXmdeh15XXkycsJ9ee15zXm9eV16onXTsKCmZ1bmN0", "aW9uIGRvbVNlZmlyYWgoZCkgewogIGlmIChkPT09MSB8fCBkPT09MzApIHJldHVybiAn15vXqteoJzsK", "ICByZXR1cm4gQ1lDTEVfN1soZC0yKSU3XTsKfQoKLyogSXMgdG9kYXkg16jXkNepINeX15XXk9epPyAo", "ZGF5IDEgb3IgMzApICovCmZ1bmN0aW9uIGlzUm9zaENob2Rlc2goZCkgeyByZXR1cm4gZD09PTF8fGQ9", "PT0zMDsgfQoKLyoKICogc2VmQWJicmV2KGN1cnJlbnRTZWZpcmFoLCBpbmNsdWRlS2V0ZXIpCiAqIEJ1", "aWxkcyB0aGUgYWJicmV2aWF0ZWQgc2VxdWVuY2Ugc3RyaW5nIGxpa2UgINebINeXINeSINeqINegINeU", "INeZINeeCiAqIHdpdGggdGhlIGFjdGl2ZSBvbmUgaGlnaGxpZ2h0ZWQsIG90aGVycyBkaW1tZWQuCiAq", "IFRoZSBhYmJyZXZpYXRpb24gbGV0dGVyczoKICogICDXm9eq16g915sgINeX16HXkz3XlyAg15LXkdeV", "16jXlD3XkiAg16rXpNeQ16jXqj3XqiAg16DXpteXPdegICDXlNeV15M915QgINeZ16HXldeTPdeZICDX", "ntec15vXldeqPdeeCiAqLwovKgogKiBGdWxsIDEwIHNlZmlyb3QgYWJicmV2aWF0aW9uIHNlcXVlbmNl", "OgogKiAgINeX15Ei15MgID0g15so16rXqCkg15co15vXnteUKSDXkSjXmdeg15QpINeTKNei16opCiAq", "ICAg15fXkiLXqiAgPSDXlyjXodeTKSAg15Io15HXldeo15QpINeqKNek15DXqNeqKQogKiAgINeg15TX", "mSLXniA9INegKNem15cpINeUKNeV15MpINeZKNeh15XXkykg154o15zXm9eV16opCiAqCiAqIEtleXMg", "bWFwIGVhY2ggbGV0dGVyIHRvIGl0cyBDU1MgY29sb3IgY2xhc3MuCiAqIE5vdGU6INeX15vXnteUIGFu", "ZCDXl9eh15MgYm90aCBhYmJyZXZpYXRlIHRvINeXIOKAlAogKiB0aGV5IHNoYXJlIHRoZSBjaGVzZWQg", "KGJsdWUpIGNvbG9yLCBkaWZmZXJlbnRpYXRlZCBieSBwb3NpdGlvbi4KICovCmNvbnN0IFNFRl9BQkJS", "RVYgPSBbCiAge3M6J9eb16rXqCcsICBhOifXmycsIGs6J2tldGVyJ30sCiAge3M6J9eX15vXnteUJywg", "YTon15cnLCBrOidjaGVzZWQnfSwKICB7czon15HXmdeg15QnLCBhOifXkScsIGs6J2hvZCd9LAogIHtz", "OifXk9ei16onLCAgYTon15MnLCBrOid0aWZlcmV0J30sCiAge3M6J9eX16HXkycsICBhOifXlycsIGs6", "J2NoZXNlZCd9LAogIHtzOifXkteR15XXqNeUJyxhOifXkicsIGs6J2dldnVyYWgnfSwKICB7czon16rX", "pNeQ16jXqicsYTon16onLCBrOid0aWZlcmV0J30sCiAge3M6J9eg16bXlycsICBhOifXoCcsIGs6J25l", "dHphY2gnfSwKICB7czon15TXldeTJywgIGE6J9eUJywgazonaG9kJ30sCiAge3M6J9eZ16HXldeTJywg", "YTon15knLCBrOid5ZXNvZCd9LAogIHtzOifXntec15vXldeqJyxhOifXnicsIGs6J21hbGNodXQnfQpd", "OwoKLyogV2VlayBzZWZpcm90ICg0LXdlZWsgY3ljbGUpOiDXl9eb157XlCDXkdeZ16DXlCDXqtek15DX", "qNeqINee15zXm9eV16ogKi8KY29uc3QgV0VFS19TRUZfQUJCUkVWID0gWwogIHtzOifXl9eb157XlCcs", "IGE6J9eXJywgazonY2hlc2VkJ30sCiAge3M6J9eR15nXoNeUJywgYTon15EnLCBrOidnZXZ1cmFoJ30s", "CiAge3M6J9eq16TXkNeo16onLGE6J9eqJywgazondGlmZXJldCd9LAogIHtzOifXntec15vXldeqJyxh", "OifXnicsIGs6J21hbGNodXQnfQpdOwoKZnVuY3Rpb24gc2VmQWJicmV2TGluZShjdXJyZW50U2VmLCBs", "aXN0KSB7CiAgLy8gRnVsbCAxMS1saXN0OiAg15sg15cg15Eg15Mg17Qg15cg15Ig16og17Qg16Ag15Qg", "15kg154KICAvLyAgIGdyb3VwIGJyZWFrcyBhZnRlciBpZHggMyAo15MpIGFuZCBpZHggNiAo16opCiAg", "Ly8gNy1saXN0IChzbGljZSA0KTog15cg15Ig16og17Qg16Ag15Qg15kg154KICAvLyAgIGdyb3VwIGJy", "ZWFrIGFmdGVyIGlkeCAyICjXqikKICAvLyA0LWxpc3QgKHdlZWspOiAg15cg15Eg16og154gIOKAlCBu", "byBncm91cCBicmVha3MKICBjb25zdCBpc0Z1bGxMaXN0ID0gbGlzdC5sZW5ndGggPT09IDExOwogIGNv", "bnN0IGlzN0xpc3QgICAgPSBsaXN0Lmxlbmd0aCA9PT0gNzsKCiAgcmV0dXJuIGxpc3QubWFwKChpdGVt", "LCBpZHgpID0+IHsKICAgIGNvbnN0IGFjdGl2ZSA9IGl0ZW0ucyA9PT0gY3VycmVudFNlZjsKICAgIGNv", "bnN0IGxldHRlciA9IGFjdGl2ZQogICAgICA/IGA8c3BhbiBjbGFzcz0ic2FiLWFjdGl2ZSBzYWItJHtp", "dGVtLmt9Ij4ke2l0ZW0uYX08L3NwYW4+YAogICAgICA6IGA8c3BhbiBjbGFzcz0ic2FiLWRpbSI+JHtp", "dGVtLmF9PC9zcGFuPmA7CgogICAgaWYgKGlkeCA9PT0gbGlzdC5sZW5ndGggLSAxKSByZXR1cm4gbGV0", "dGVyOyAvLyBsYXN0IOKAlCBubyBzZXBhcmF0b3IKCiAgICBsZXQgc2VwID0gJzxzcGFuIGNsYXNzPSJz", "YWItc2VwIj7Xszwvc3Bhbj4nOwogICAgaWYgKGlzRnVsbExpc3QgJiYgKGlkeCA9PT0gMyB8fCBpZHgg", "PT09IDYpKSBzZXAgPSAnPHNwYW4gY2xhc3M9InNhYi1ncnAiPte0PC9zcGFuPic7CiAgICBpZiAoaXM3", "TGlzdCAgICAmJiAgaWR4ID09PSAyKSAgICAgICAgICAgICAgIHNlcCA9ICc8c3BhbiBjbGFzcz0ic2Fi", "LWdycCI+17Q8L3NwYW4+JzsKCiAgICByZXR1cm4gbGV0dGVyICsgc2VwOwogIH0pLmpvaW4oJycpOwp9", "CgovKiA3LWN5Y2xlICjXl9eh15PigJPXntec15vXldeqKTogaW5kaWNlcyA04oCTMTAgb2YgdGhlIGZ1", "bGwgMTEtbGlzdCAqLwpmdW5jdGlvbiBzZWZBYmJyZXY3KGN1cnJlbnRTZWYpIHsKICByZXR1cm4gc2Vm", "QWJicmV2TGluZShjdXJyZW50U2VmLCBTRUZfQUJCUkVWLnNsaWNlKDQpKTsKfQoKLyogMTAtY3ljbGUg", "KNeb16rXqOKAk9ee15zXm9eV16osIGFsbCk6IGZ1bGwgbGlzdCDigJQgdXNlZCBmb3Ig15vXqteoLXBv", "c3NpYmxlIGNvbnRleHRzICovCmZ1bmN0aW9uIHNlZkFiYnJldjgoY3VycmVudFNlZikgewogIHJldHVy", "biBzZWZBYmJyZXZMaW5lKGN1cnJlbnRTZWYsIFNFRl9BQkJSRVYpOwp9CgovKiBjaGFiYWQtbGluZTog", "ZnVsbCAxMC1zZWZpcm90IGFiYnJldmlhdGVkIGFzINeb15fXkSLXk3zXl9eSIteqfNeg15TXmSLXniAq", "LwpmdW5jdGlvbiBzZWZBYmJyZXZGdWxsKGN1cnJlbnRTZWYpIHsKICByZXR1cm4gc2VmQWJicmV2TGlu", "ZShjdXJyZW50U2VmLCBTRUZfQUJCUkVWKTsKfQoKLyogNC1jeWNsZSBmb3Igd2VlayAqLwpmdW5jdGlv", "biBzZWZBYmJyZXY0KGN1cnJlbnRTZWYpIHsKICByZXR1cm4gc2VmQWJicmV2TGluZShjdXJyZW50U2Vm", "LCBXRUVLX1NFRl9BQkJSRVYpOwp9CgpmdW5jdGlvbiBnZXRIZWJEYXRlKCkgewogIGNvbnN0IHBhcnRz", "PW5ldyBJbnRsLkRhdGVUaW1lRm9ybWF0KCdoZS11LWNhLWhlYnJldycsCiAgICB7ZGF5OidudW1lcmlj", "Jyxtb250aDonbG9uZycseWVhcjonbnVtZXJpYyd9KS5mb3JtYXRUb1BhcnRzKG5ldyBEYXRlKCkpOwog", "IGxldCBkLG0seTsKICBwYXJ0cy5mb3JFYWNoKHg9PnsKICAgIGlmKHgudHlwZT09PSdkYXknKSAgIGQ9", "cGFyc2VJbnQoeC52YWx1ZSk7CiAgICBpZih4LnR5cGU9PT0nbW9udGgnKSBtPXgudmFsdWU7CiAgICBp", "Zih4LnR5cGU9PT0neWVhcicpICB5PXBhcnNlSW50KHgudmFsdWUpOwogIH0pOwogIHJldHVybiB7ZCxt", "LHl9Owp9CgpmdW5jdGlvbiBtSWR4KG5hbWUpIHsKICByZXR1cm4gTU9OVEhfTkFNRVMuZmluZEluZGV4", "KG1uPT5tbj09PW5hbWV8fG5hbWUuaW5jbHVkZXMobW4pfHxtbi5pbmNsdWRlcyhuYW1lKSk7Cn0KCi8q", "CiAqIE1vbnRoIHBhcnR6dWYvZmlsbGluZyBsYWJlbDoKICogICBTdW1tZXIgbW9udGhzICjXoNeZ16HX", "nz02IHRocm91Z2gg15DXnNeV15w9MTEsIHBsdXMg16rXqdeo15k9MCk6CiAqICAgICDXkde0158g15PX", "nte015Qg15XXkde0158g15PXkde0158KICogICBXaW50ZXIgbW9udGhzICjXl9ep15XXldefPTEgdGhy", "b3VnaCDXkNeT16g9NSk6CiAqICAgICDXnte015Qg15PXnte015Qg15XXnte015Qg15PXkde0158KICov", "CmZ1bmN0aW9uIG1vbnRoUGFydHp1ZihtaSkgewogIGNvbnN0IHN1bW1lciA9IFswLDYsNyw4LDksMTAs", "MTFdOyAvLyDXqtep16jXmSArINeg15nXodefIHRocm91Z2gg15DXnNeV15wKICByZXR1cm4gc3VtbWVy", "LmluY2x1ZGVzKG1pKQogICAgPyAn15HXtNefINeT157XtNeUINeV15HXtNefINeT15HXtNefJwogICAg", "OiAn157XtNeUINeT157XtNeUINeV157XtNeUINeT15HXtNefJzsKfQoKZnVuY3Rpb24gcHQoY3gsY3ks", "cixkZWcpIHsKICBjb25zdCBhPShkZWctOTApKk1hdGguUEkvMTgwOwogIHJldHVybiB7eDpjeCtyKk1h", "dGguY29zKGEpLHk6Y3krcipNYXRoLnNpbihhKX07Cn0KCmZ1bmN0aW9uIHNlZ1BhdGgoY3gsY3kscjEs", "cjIsc2EsZWEpIHsKICBjb25zdCBHPS42LHM9c2ErRy8yLGU9ZWEtRy8yLGxnPShlLXMpPjE4MD8xOjA7", "CiAgY29uc3QgYT1wdChjeCxjeSxyMixzKSxiPXB0KGN4LGN5LHIyLGUpLGM9cHQoY3gsY3kscjEsZSks", "ZD1wdChjeCxjeSxyMSxzKTsKICByZXR1cm4gYE0ke2EueH0sJHthLnl9QSR7cjJ9LCR7cjJ9IDAgJHts", "Z30gMSAke2IueH0sJHtiLnl9YCsKICAgICAgICAgYEwke2MueH0sJHtjLnl9QSR7cjF9LCR7cjF9IDAg", "JHtsZ30gMCAke2QueH0sJHtkLnl9WmA7Cn0KCi8qIOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKV", "kOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKV", "kOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkAogICBDVVJWRUQgVEVYVArilZDilZDilZDilZDilZDi", "lZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDi", "lZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZAgKi8KbGV0IF9waWQ9MDsKCmZ1", "bmN0aW9uIGN0ZXh0KGcsZGVmcyxjeCxjeSxyLHNhLGVhLHRleHQsY2xzLGZzLGZsdCkgewogIGNvbnN0", "IGlkPSJwIisoKytfcGlkKTsKICBjb25zdCBtaWQ9KChzYStlYSkvMiszNjApJTM2MDsKICBjb25zdCBi", "b3Q9bWlkPjkwJiZtaWQ8MjcwOwogIGxldCBkOwogIGlmICghYm90KSB7CiAgICBjb25zdCBwMT1wdChj", "eCxjeSxyLHNhKSxwMj1wdChjeCxjeSxyLGVhKSxsZz0oZWEtc2EpPjE4MD8xOjA7CiAgICBkPWBNJHtw", "MS54fSwke3AxLnl9QSR7cn0sJHtyfSAwICR7bGd9IDEgJHtwMi54fSwke3AyLnl9YDsKICB9IGVsc2Ug", "ewogICAgY29uc3QgcDE9cHQoY3gsY3kscixlYSkscDI9cHQoY3gsY3kscixzYSksbGc9KGVhLXNhKT4x", "ODA/MTowOwogICAgZD1gTSR7cDEueH0sJHtwMS55fUEke3J9LCR7cn0gMCAke2xnfSAwICR7cDIueH0s", "JHtwMi55fWA7CiAgfQogIGRlZnMuYXBwZW5kQ2hpbGQobWsoInBhdGgiLHtpZCxkLGZpbGw6Im5vbmUi", "fSkpOwogIGNvbnN0IHRFbD1taygidGV4dCIse2NsYXNzOmNscywiZm9udC1zaXplIjpmc30pOwogIGlm", "KGZsdCkgdEVsLnNldEF0dHJpYnV0ZSgiZmlsdGVyIixmbHQpOwogIGNvbnN0IHRwPW1rKCJ0ZXh0UGF0", "aCIse2hyZWY6YCMke2lkfWAsc3RhcnRPZmZzZXQ6IjUwJSIsInRleHQtYW5jaG9yIjoibWlkZGxlIn0p", "OwogIHRwLnRleHRDb250ZW50PXRleHQ7CiAgdEVsLmFwcGVuZENoaWxkKHRwKTsKICBnLmFwcGVuZENo", "aWxkKHRFbCk7Cn0KCi8qIOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKV", "kOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKV", "kOKVkOKVkOKVkOKVkAogICBEUkFXIEdFTkVSSUMgUklORwrilZDilZDilZDilZDilZDilZDilZDilZDi", "lZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDi", "lZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZAgKi8KZnVuY3Rpb24gZHJhd1JpbmcoZyxkZWZz", "LGN4LGN5LHIxLHIyLGl0ZW1zLG14TWFpbixteFNlZmkpIHsKICBjb25zdCBuPWl0ZW1zLmxlbmd0aCxz", "dGVwPTM2MC9uLHJIPXIyLXIxLHJNaWQ9KHIxK3IyKS8yLENSQVQ9LjY1OwoKICBpdGVtcy5mb3JFYWNo", "KChpdGVtLGkpPT57CiAgICBjb25zdCBzPWkqc3RlcCxlPXMrc3RlcDsKICAgIGNvbnN0IHNrPWl0ZW0u", "c2VmaT9zS2V5KGl0ZW0uc2VmaSk6bnVsbDsKCiAgICBpZiAoaXRlbS5hY3RpdmUpIHsKICAgICAgY29u", "c3QgaEZpbGw9c2sKICAgICAgICA/IFNFRklfQ09MT1Jbc2tdLnJlcGxhY2UoJy45NSknLCcuMjApJykK", "ICAgICAgICA6ICdyZ2JhKDI1NSwyMTAsMCwuMTUpJzsKICAgICAgZy5hcHBlbmRDaGlsZChtaygicGF0", "aCIse2Q6c2VnUGF0aChjeCxjeSxyMS0yLHIyKzIuNSxzLGUpLGZpbGw6aEZpbGwsZmlsdGVyOiJ1cmwo", "I2dsb3cyKSJ9KSk7CiAgICB9CgogICAgY29uc3Qgc2VnQ2xzPWl0ZW0uYWN0aXZlCiAgICAgID8gInNl", "ZyAiKyhzaz8ic2VnLSIrc2s6InNlZy1hY3QiKQogICAgICA6ICJzZWcgc2VnLWRpbSI7CiAgICBjb25z", "dCBzZWc9bWsoInBhdGgiLHtkOnNlZ1BhdGgoY3gsY3kscjEscjIscyxlKSxjbGFzczpzZWdDbHN9KTsK", "ICAgIGlmKGl0ZW0uYWN0aXZlKSBzZWcuc2V0QXR0cmlidXRlKCJmaWx0ZXIiLCJ1cmwoI2dsb3cxKSIp", "OwogICAgZy5hcHBlbmRDaGlsZChzZWcpOwoKICAgIGNvbnN0IGFyY0xlbj0yKk1hdGguUEkqck1pZCoo", "c3RlcC8zNjApOwogICAgY29uc3QgdHdvTGluZT0hIWl0ZW0uc2VmaSYmckg+PTEzOwogICAgbGV0IHJN", "YWluLGZzTWFpbixyU2VmaSxmc1NlZmk7CgogICAgaWYodHdvTGluZSl7CiAgICAgIHJNYWluPXIxK3JI", "Ki43MDsgclNlZmk9cjErckgqLjI4OwogICAgICBmc01haW49TWF0aC5taW4oTWF0aC5tYXgoYXJjTGVu", "LyhpdGVtLmxhYmVsLmxlbmd0aCpDUkFUKSw0KSxteE1haW58fHJIKi40NCk7CiAgICAgIGZzU2VmaT1N", "YXRoLm1pbihNYXRoLm1heChhcmNMZW4vKGl0ZW0uc2VmaS5sZW5ndGgqQ1JBVCksMy4yKSxteFNlZml8", "fHJIKi4yOCk7CiAgICB9IGVsc2UgewogICAgICByTWFpbj1yTWlkOwogICAgICBmc01haW49TWF0aC5t", "aW4oTWF0aC5tYXgoYXJjTGVuLyhpdGVtLmxhYmVsLmxlbmd0aCpDUkFUKSw0KSxteE1haW58fHJIKi42", "NSk7CiAgICB9CgogICAgY29uc3QgbENscz1pdGVtLmFjdGl2ZT8oaXRlbS5wYXJ0enVmPyJybC1wdHot", "YWN0IjoicmwtYWN0Iik6KGl0ZW0ucGFydHp1Zj8icmwtcHR6IjoicmwiKTsKICAgIGN0ZXh0KGcsZGVm", "cyxjeCxjeSxyTWFpbixzLGUsaXRlbS5sYWJlbCxsQ2xzLGZzTWFpbixpdGVtLmFjdGl2ZT8idXJsKCN0", "Z2xvdzIpIjpudWxsKTsKCiAgICBpZih0d29MaW5lJiZpdGVtLnNlZmkpCiAgICAgIGN0ZXh0KGcsZGVm", "cyxjeCxjeSxyU2VmaSxzLGUsaXRlbS5zZWZpLHNTdmdDbHMoaXRlbS5zZWZpKSxmc1NlZmksbnVsbCk7", "CiAgfSk7Cn0KCi8qIOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKV", "kOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKV", "kOKVkOKVkOKVkAogICBEUkFXIEhPVVIgUklORwrilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDi", "lZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDi", "lZDilZDilZDilZDilZDilZDilZDilZDilZAgKi8KZnVuY3Rpb24gZHJhd0hvdXJSaW5nKGcsZGVmcyxj", "eCxjeSxyMSxyMixjdXJIKSB7CiAgY29uc3Qgc3RlcD0zNjAvMjQsckg9cjItcjEsck1pZD0ocjErcjIp", "LzIsQ1JBVD0uNjI7CgogIGZvcihsZXQgaT0wO2k8MjQ7aSsrKXsKICAgIGNvbnN0IHM9aSpzdGVwLGU9", "cytzdGVwLGFjdGl2ZT1pPT09Y3VySDsKICAgIGNvbnN0IHNrPXNLZXkoSE9VUl9TRUZbaV0pOwoKICAg", "IGlmKGFjdGl2ZSl7CiAgICAgIGcuYXBwZW5kQ2hpbGQobWsoInBhdGgiLHsKICAgICAgICBkOnNlZ1Bh", "dGgoY3gsY3kscjEtMixyMisyLjUscyxlKSwKICAgICAgICBmaWxsOlNFRklfQ09MT1Jbc2tdLnJlcGxh", "Y2UoJy45NSknLCcuMTgpJyksCiAgICAgICAgZmlsdGVyOiJ1cmwoI2dsb3cyKSIKICAgICAgfSkpOwog", "ICAgfQoKICAgIGNvbnN0IHNlZz1taygicGF0aCIsewogICAgICBkOnNlZ1BhdGgoY3gsY3kscjEscjIs", "cyxlKSwKICAgICAgY2xhc3M6InNlZyAiKyhhY3RpdmU/InNlZy0iK3NrOiJzZWctZGltIikKICAgIH0p", "OwogICAgaWYoYWN0aXZlKSBzZWcuc2V0QXR0cmlidXRlKCJmaWx0ZXIiLCJ1cmwoI2dsb3cxKSIpOwog", "ICAgZy5hcHBlbmRDaGlsZChzZWcpOwoKICAgIGNvbnN0IGFyY0xlbj0yKk1hdGguUEkqck1pZCooc3Rl", "cC8zNjApOwogICAgY29uc3Qgd29yZHM9SE9VUl9OQU1FU1tpXS5zcGxpdCgiICIpOwogICAgY29uc3Qg", "bWF4Vz1NYXRoLm1heCguLi53b3Jkcy5tYXAodz0+dy5sZW5ndGgpKTsKCiAgICAvKiBMYXlvdXQgZnJv", "bSBvdXRlcuKGkmlubmVyOgogICAgICogIHIxK3JIKi44OCAg4oCUIGhvdXIgbnVtYmVyICgxLTEyIEFN", "L1BNKQogICAgICogIHIxK3JIKi42NiAg4oCUIG5hbWUgd29yZCAxCiAgICAgKiAgcjErckgqLjMwICDi", "gJQgbmFtZSB3b3JkIDIKICAgICAqICByMStySCouMTAgIOKAlCBzZWZpcmFoIChhY3RpdmUgb25seSkK", "ICAgICAqLwogICAgY29uc3QgZnNIPU1hdGgubWluKE1hdGgubWF4KGFyY0xlbi8oNCpDUkFUKSwyLjgp", "LHJIKi4yMCk7ICAvLyBob3VyIG51bSBmb250CiAgICBjb25zdCBmc1c9TWF0aC5taW4oTWF0aC5tYXgo", "YXJjTGVuLyhtYXhXKkNSQVQpLDMuMCksckgqLjMwKTsgLy8gbmFtZSBmb250CiAgICBjb25zdCBsQ2xz", "PWFjdGl2ZT8iaG4tYWN0IjoiaG4iOwogICAgY29uc3QgbEZsdD1hY3RpdmU/InVybCgjdGdsb3cyKSI6", "bnVsbDsKCiAgICAvLyBIb3VyIG51bWJlciBsYWJlbCAgZS5nLiAiMTJBTSIgb3IgIjNQTSIKICAgIGNv", "bnN0IGgxMj0oaSUxMil8fDEyLCBhcD1pPDEyPyJBTSI6IlBNIjsKICAgIGNvbnN0IGhvdXJMYWJlbD1g", "JHtoMTJ9JHthcH1gOwogICAgY29uc3QgaE51bUNscz1hY3RpdmU/ImhuLWFjdCI6ImhuLW51bSI7CiAg", "ICBjdGV4dChnLGRlZnMsY3gsY3kscjErckgqLjg4LHMsZSxob3VyTGFiZWwsaE51bUNscyxmc0gsYWN0", "aXZlPyJ1cmwoI3RnbG93MikiOm51bGwpOwoKICAgIC8vIE5hbWUgd29yZHMg4oCUIGFjdGl2ZSBnZXRz", "IHN0cm9uZyBkb3VibGUtZ2xvdywgaW5hY3RpdmUgZ2V0cyB0Z2xvdwogICAgY29uc3QgbmFtZUZsdCA9", "IGFjdGl2ZSA/ICJ1cmwoI3RnbG93MikiIDogInVybCgjdGdsb3cpIjsKICAgIGN0ZXh0KGcsZGVmcyxj", "eCxjeSxyMStySCouNjYscyxlLHdvcmRzWzBdLGxDbHMsZnNXLG5hbWVGbHQpOwogICAgaWYod29yZHNb", "MV0pIGN0ZXh0KGcsZGVmcyxjeCxjeSxyMStySCouMzAscyxlLHdvcmRzWzFdLGxDbHMsZnNXLG5hbWVG", "bHQpOwoKICAgIC8vIERlY29yYXRpdmUgbWlkLWRvdCBiZXR3ZWVuIHdvcmQgcm93cyAoYWxsIHNlZ21l", "bnRzKQogICAgewogICAgICBjb25zdCBkb3RDbHMgPSBhY3RpdmUgPyAiaG4tZG90LWFjdCIgOiAiaG4t", "ZG90IjsKICAgICAgY29uc3QgZG90RnMgID0gTWF0aC5tYXgoMi41LCBmc1cgKiAwLjU1KTsKICAgICAg", "Y3RleHQoZyxkZWZzLGN4LGN5LHIxK3JIKi40OSxzLGUsJ8K3Jyxkb3RDbHMsZG90RnMsbnVsbCk7CiAg", "ICB9CgogICAgLy8gU2VmaXJhaCBsYWJlbCByZW1vdmVkIGZyb20gaG91ciByaW5nIHBlciB1c2VyIHJl", "cXVlc3QKICB9Cn0KCi8qIOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKV", "kOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKV", "kOKVkOKVkOKVkOKVkAogICBSSU5HIFRJVExFIExBQkVMCiAgIERyYXdzIGEgc2hvcnQgY3VydmVkIHRp", "dGxlIGF0IHRoZSB0b3Agb2YgYSByaW5nIGJhbmQKICAgciA9IG1pZHBvaW50IHJhZGl1cyBvZiB0aGUg", "cmluZwrilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDi", "lZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDi", "lZAgKi8KZnVuY3Rpb24gZHJhd1JpbmdUaXRsZShnLCBkZWZzLCBjeCwgY3ksIHIsIHRpdGxlKSB7CiAg", "Y29uc3QgaWQgPSAicnQiICsgKCsrX3BpZCk7CiAgLy8gQXJjIGF0IHRoZSB2ZXJ5IHRvcCDigJQgZnJv", "bSAyNjXCsCB0byAyNzXCsCAodGlueSAxMMKwIGFyYyBjZW50cmVkIGF0IHRvcCkKICAvLyBXZSB3YW50", "IHRoZSB0ZXh0IHRvIHNpdCBpbnNpZGUgdGhlIHJpbmcgZ2FwIGF0IHRoZSAxMi1vJ2Nsb2NrIHBvc2l0", "aW9uCiAgY29uc3Qgc3BhbiA9IDE4OyAvLyBkZWdyZWVzIGVhY2ggc2lkZSBvZiB0b3AKICBjb25zdCBw", "MSA9IHB0KGN4LCBjeSwgciwgLXNwYW4pLCBwMiA9IHB0KGN4LCBjeSwgciwgc3Bhbik7CiAgZGVmcy5h", "cHBlbmRDaGlsZChtaygicGF0aCIsIHsKICAgIGlkLCBmaWxsOiAibm9uZSIsCiAgICBkOiBgTSR7cDEu", "eH0sJHtwMS55fUEke3J9LCR7cn0gMCAwIDEgJHtwMi54fSwke3AyLnl9YAogIH0pKTsKICBjb25zdCB0", "eHQgPSBtaygidGV4dCIsIHsKICAgICJmb250LWZhbWlseSI6ICJGcmFuayBSdWhsIExpYnJlLCBBcmlh", "bCBIZWJyZXcsIE5vdG8gU2FucyBIZWJyZXcsIERhdmlkLCBzZXJpZiIsCiAgICAiZm9udC1zaXplIjog", "IjUuNSIsCiAgICAiZm9udC13ZWlnaHQiOiAiOTAwIiwKICAgIGZpbGw6ICJyZ2JhKDI1NSwyMzAsMTAw", "LC43MCkiLAogICAgZmlsdGVyOiAidXJsKCN0Z2xvdykiCiAgfSk7CiAgY29uc3QgdHAgPSBtaygidGV4", "dFBhdGgiLCB7CiAgICBocmVmOiBgIyR7aWR9YCwKICAgIHN0YXJ0T2Zmc2V0OiAiNTAlIiwKICAgICJ0", "ZXh0LWFuY2hvciI6ICJtaWRkbGUiCiAgfSk7CiAgdHAudGV4dENvbnRlbnQgPSB0aXRsZTsKICB0eHQu", "YXBwZW5kQ2hpbGQodHApOwogIGcuYXBwZW5kQ2hpbGQodHh0KTsKfQoKLyog4pWQ4pWQ4pWQ4pWQ4pWQ", "4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ", "4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQCiAgIEdMT1cgTkFNRQrilZDi", "lZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDi", "lZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZAgKi8KZnVu", "Y3Rpb24gYnVpbGRHbG93TmFtZShzdHIpIHsKICByZXR1cm4gc3RyLnNwbGl0KCIgIikubWFwKHdvcmQ9", "PnsKICAgIGNvbnN0IGNoYXJzPXdvcmQuc3BsaXQoIiIpLm1hcCgoY2gsaSk9PnsKICAgICAgY29uc3Qg", "ZGFzaD1pPHdvcmQubGVuZ3RoLTE/YDxzcGFuIGNsYXNzPSJkYXNoLXNlcCI+LTwvc3Bhbj5gOiIiOwog", "ICAgICByZXR1cm4gYDxzcGFuIGNsYXNzPSJmYyI+PHNwYW4gY2xhc3M9ImIiPiR7Y2h9PC9zcGFuPjxz", "cGFuIGNsYXNzPSJnIj4ke2NofTwvc3Bhbj48c3BhbiBjbGFzcz0icyI+JHtjaH08L3NwYW4+PC9zcGFu", "PiR7ZGFzaH1gOwogICAgfSkuam9pbigiIik7CiAgICByZXR1cm4gYDxzcGFuIGNsYXNzPSJuYW1lLXdv", "cmQiPiR7Y2hhcnN9PC9zcGFuPmA7CiAgfSkuam9pbihgPHNwYW4gc3R5bGU9ImRpc3BsYXk6aW5saW5l", "LWJsb2NrO3dpZHRoOmNsYW1wKDZweCwxLjR2dywxOHB4KSI+PC9zcGFuPmApOwp9CgovKiDilZDilZDi", "lZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDi", "lZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZAKICAgV0hFRUwK", "4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ", "4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQICov", "CmZ1bmN0aW9uIGJ1aWxkV2hlZWwoY3VyKSB7CiAgY29uc3QgdHJhY2s9ZG9jdW1lbnQuZ2V0RWxlbWVu", "dEJ5SWQoIndoZWVsLXRyYWNrIik7CiAgY29uc3Qgd2hlZWw9ZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQo", "ImhvdXItd2hlZWwiKTsKICBjb25zdCBpVz1NYXRoLm1pbihNYXRoLm1heCg0NCx3aGVlbC5vZmZzZXRX", "aWR0aCouMTMpLDEwMCk7CiAgdHJhY2suaW5uZXJIVE1MPSIiOwogIGZvcihsZXQgaT0wO2k8MjQ7aSsr", "KXsKICAgIGNvbnN0IGFkaj1NYXRoLmFicyhpLWN1cik9PT0xfHxNYXRoLmFicyhpLWN1cik9PT0yMzsK", "ICAgIGNvbnN0IGQ9ZG9jdW1lbnQuY3JlYXRlRWxlbWVudCgiZGl2Iik7CiAgICBkLmNsYXNzTmFtZT0i", "d2kiKyhpPT09Y3VyPyIgYWN0aXZlIjphZGo/IiBuZWFyIjoiIik7CiAgICBkLnN0eWxlLndpZHRoPWlX", "KyJweCI7CiAgICBjb25zdCBoMTI9KGklMTIpfHwxMixhcD1pPDEyPyJBTSI6IlBNIjsKICAgIGQuaW5u", "ZXJIVE1MPQogICAgICBgPGRpdiBjbGFzcz0id2giPiR7aDEyfSR7YXB9PC9kaXY+YCsKICAgICAgYDxk", "aXYgY2xhc3M9InduIj4ke0hPVVJfTkFNRVNbaV19PC9kaXY+YDsKICAgIHRyYWNrLmFwcGVuZENoaWxk", "KGQpOwogIH0KICB0cmFjay5zdHlsZS50cmFuc2Zvcm09YHRyYW5zbGF0ZVgoJHstKGN1cippVy13aGVl", "bC5vZmZzZXRXaWR0aC8yK2lXLzIpfXB4KWA7Cn0KCi8qIOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKV", "kOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKV", "kOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkAogICBGSVJFCuKVkOKVkOKVkOKVkOKVkOKVkOKV", "kOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKV", "kOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkCAqLwpmdW5jdGlvbiBhbmltYXRlRmly", "ZSgpIHsKICBjb25zdCBmYj1kb2N1bWVudC5nZXRFbGVtZW50QnlJZCgiZmlyZUJnIik7CiAgbGV0IHQ9", "MDsKICBzZXRJbnRlcnZhbCgoKT0+ewogICAgdCs9LjA2OwogICAgY29uc3Qgb3A9LjYwK01hdGguc2lu", "KHQpKi4xOCtNYXRoLnNpbih0KjIuNCsxKSouMDk7CiAgICBmYi5zZXRBdHRyaWJ1dGUoIm9wYWNpdHki", "LG9wLnRvRml4ZWQoMykpOwogIH0sNDApOwp9CgovKiDilZDilZDilZDilZDilZDilZDilZDilZDilZDi", "lZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDi", "lZDilZDilZDilZDilZDilZDilZDilZDilZDilZAKICAgTUFJTiBVUERBVEUK4pWQ4pWQ4pWQ4pWQ4pWQ", "4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ", "4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQICovCmxldCBsYXN0SG91cj0t", "MTsKCmZ1bmN0aW9uIHVwZGF0ZSgpIHsKICBjb25zdCBub3c9bmV3IERhdGUoKSxoPW5vdy5nZXRIb3Vy", "cygpOwogIGNvbnN0IGhlYj1nZXRIZWJEYXRlKCk7CiAgY29uc3QgZGF5SnM9bm93LmdldERheSgpOwog", "IGNvbnN0IHdlZWs9TWF0aC5jZWlsKGhlYi5kLzcpOwogIGNvbnN0IG1pPW1JZHgoaGViLm0pOwogIGNv", "bnN0IHNQb3M9KGhlYi55LTEpJTc7IC8vIDA915fXodeT4oCmNj3Xntec15vXldeqLCB5ZWFyIDE9Y2hl", "c2VkCiAgY29uc3QgeVk9Njc7IC8vINeZ15XXkdecINeh17TXliDigJQgdHJhZGl0aW9uYWwgY291bnQg", "ZnJvbSBlbnRyeSBpbnRvIEVyZXR6IFlpc3JhZWwKICBjb25zdCB5RnVsbCAgICA9IGZ1bGxZZWFyU3Ry", "KGhlYi55KTsKICBjb25zdCB5Q29tcHMgICA9IHllYXJDb21wb25lbnRzKGhlYi55KTsKICAvKiB3ZWVr", "IHNlZmlyYWggY29tcHV0ZWQgaW5saW5lIGluIHdlZWtQaWxsIGJlbG93ICovCiAgY29uc3QgbVNlZiAg", "ICAgPSBNT05USF9TRUZbTWF0aC5tYXgoMCxtaSldOwogIGNvbnN0IGRvbSAgICAgID0gdG9ITihoZWIu", "ZCk7CiAgY29uc3QgZG9tU2VmICAgPSBkb21TZWZpcmFoKGhlYi5kKTsKICBjb25zdCBpc1JDICAgICA9", "IGlzUm9zaENob2Rlc2goaGViLmQpOwoKICBsYXN0SG91cj1oOwoKICAvKiBIZWFkZXIgbmFtZSAqLwog", "IGRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCJuYW1lLXdyYXAiKS5pbm5lckhUTUw9YnVpbGRHbG93TmFt", "ZShIT1VSX05BTUVTW2hdKTsKCiAgLyog4pSA4pSAIERBVEUgVElUTEUg4pSA4pSACiAgICogUm93IDEg", "KGhlYWRsaW5lKTog15Ug15HXkNeZ15nXqCDXlNez16rXqdek17TXlQogICAqIFJvdyAxYiAoYXR0ciBs", "aW5lKTog15XXsyDXkdeQ15nXmdeoINeU15XXkyDXk9eU15XXkyDXk9eX15vXnteUINeT15LXkdeV16jX", "lCDXk9eq16TXkNeo16og15PXmdeh15XXkyDXk9eU15XXkyDXk9eZ16HXldeTCiAgICogUm93IDIgKHBp", "bGxzKTog15nXldedINeU17MgfCDXqdeR15XXoiDXkCB8INeVINeR15fXldeT16kgfCDXkNeZ15nXqCB8", "INep157XmdeY15Qg15QKICAgKiBSb3cgMyAoeWVhciBjaGlwcyk6INep16DXlCDXlSB8INei16nXqNeV", "16og16QgfCDXnteQ15XXqiDXqtepIHwg15TXsyDXkNec16TXmdedIHwg15nXldeR15wg16HXtNeWCiAg", "ICovCgogIC8qIOKUgOKUgCBDb21wdXRlIGFsbCBzZWZpcm90IGZvciBhdHRyaWJ1dGUgbGluZSDilIDi", "lIAgKi8KICBjb25zdCB3ZWVrUHR6ICA9IFdFRUtfUFRaWyh3ZWVrLTEpJTRdfHwn157XnNeb15XXqic7", "CiAgY29uc3QgeVVuaXRzICAgPSB5Q29tcHMuZmluZCh4PT54LmxhYmVsJiZ4LmxhYmVsLmluY2x1ZGVz", "KCfXqdegJykpfHx5Q29tcHNbeUNvbXBzLmxlbmd0aC0xXTsKICBjb25zdCB5VGVucyAgICA9IHlDb21w", "cy5maW5kKHg9PngubGFiZWwmJih4LmxhYmVsLmluY2x1ZGVzKCfXotep16gnKXx8eC5sYWJlbC5pbmNs", "dWRlcygn16nXnteV16AnKSYmeC5sYWJlbC5sZW5ndGg8MTIpKXx8bnVsbDsKICBjb25zdCB5SHVuZHMg", "ICA9IHlDb21wcy5maW5kKHg9PngubGFiZWwmJngubGFiZWwuaW5jbHVkZXMoJ9ee15DXlScpKXx8bnVs", "bDsKICBjb25zdCB5TWlsICAgICA9IHlDb21wcy5maW5kKHg9PngubGFiZWwmJngubGFiZWwuaW5jbHVk", "ZXMoJ9eQ15zXpCcpKXx8bnVsbDsKCiAgLy8gSGVscGVyIHRvIGNvbG9yIGEgc2VmaXJhaCBuYW1lIGlu", "bGluZQogIGZ1bmN0aW9uIHNmKHNlZikgewogICAgY29uc3QgayA9IHNlZj09PSfXm9eq16gnPydrZXRl", "cic6c0tleShzZWYpOwogICAgcmV0dXJuIGA8c3BhbiBjbGFzcz0iZGwtYXR0ci1zZWYgZGwtcy0ke2t9", "Ij4ke3NlZn08L3NwYW4+YDsKICB9CgogIC8qIFJvdyAxIOKAlCBiaWcgaGVhZGxpbmUgKi8KICBjb25z", "dCByY0JhZGdlID0gaXNSQyA/IGA8c3BhbiBjbGFzcz0iZGwtcmMtYmFkZ2UiPteo15DXqSDXl9eV15PX", "qTwvc3Bhbj5gIDogIiI7CiAgY29uc3Qgcm93MSA9CiAgICBgPGRpdiBjbGFzcz0iZGwtaGVhZGxpbmUi", "PmArCiAgICByY0JhZGdlKwogICAgYDxzcGFuIGNsYXNzPSJkbC1kb20tbnVtIj4ke2RvbX08L3NwYW4+", "YCsKICAgIGA8c3BhbiBjbGFzcz0iZGwtbW9udGgtbm0iPteRJHtoZWIubX08L3NwYW4+YCsKICAgIGA8", "c3BhbiBjbGFzcz0iZGwteWVhci1ubSI+JHt5RnVsbH08L3NwYW4+YCsKICAgIGA8L2Rpdj5gOwoKICAv", "KiBSb3cgMWIg4oCUIGF0dHJpYnV0ZSBsaW5lIHdpdGggYnJhY2tldGVkIHNvdXJjZSBsYWJlbHMKICAg", "KiBGb3JtYXQ6INeWINeR15DXmdeZ16gg15nXodeV15Nb15nXldedXSDXk9eZ16HXldeTW9eZ15XXnSDX", "kdeX15XXk9epXSDXk9eS15HXldeo15Rb15fXldeT16ldCiAgICogICAgICAgICDXk9eq16TXkNeo16pb", "16nXoNeUXSDXk9eZ16HXldeTW9ei16nXldeoXSDXk9eU15XXk1vXlNee15DXlF0g15PXmdeh15XXk1vX", "kNec16TXmdedXQogICAqIE9yZGVyOiDXmdeV150g4oaSINeZ15XXnSDXkdeX15XXk9epIOKGkiDXl9eV", "15PXqSDihpIg16nXoNeUIOKGkiDXotep15XXqCDihpIg157XkNeUIOKGkiDXkNec16TXmdedCiAgICog", "Rmlyc3QgaXRlbTogbm8g15MgcHJlZml4OyByZXN0IHByZWZpeGVkIHdpdGgg15MKICAgKi8KICBmdW5j", "dGlvbiBzZkJyYWNrZXRlZChzZWYsIGxhYmVsLCBub0QpIHsKICAgIGNvbnN0IGsgPSBzZWY9PT0n15vX", "qteoJz8na2V0ZXInOnNLZXkoc2VmKTsKICAgIGNvbnN0IGQgPSBub0QgPyAnJyA6ICc8c3BhbiBjbGFz", "cz0iZGwtYXR0ci1kIj7Xkzwvc3Bhbj4nOwogICAgcmV0dXJuIGQgKwogICAgICBgPHNwYW4gY2xhc3M9", "ImRsLWF0dHItc2VmIGRsLXMtJHtrfSI+JHtzZWZ9PC9zcGFuPmArCiAgICAgIGA8c3BhbiBjbGFzcz0i", "ZGwtYXR0ci1icmFja2V0Ij5bJHtsYWJlbH1dPC9zcGFuPmA7CiAgfQoKICAvLyBDb2xsZWN0IHllYXIg", "Y29tcG9uZW50cyBpbiBvcmRlcjogdW5pdHPihpJ0ZW5z4oaSaHVuZHJlZHPihpJtaWwKICBjb25zdCB5", "UmV2ZXJzZWQgPSBbLi4ueUNvbXBzXS5yZXZlcnNlKCk7CiAgY29uc3QgeUxhYmVscyAgID0gWyfXqdeg", "15QnLCfXotep15XXqCcsJ9eU157XkNeUJywn15DXnNek15nXnSddOwoKICBjb25zdCBhdHRySXRlbXMg", "PSBbCiAgICBzZkJyYWNrZXRlZChEQVlfU0VGW2RheUpzXSwgICAgJ9eZ15XXnScsICAgICAgICAgIHRy", "dWUpLCAgIC8vIGZpcnN0IOKAlCBubyDXkwogICAgc2ZCcmFja2V0ZWQoZG9tU2VmLCAgICAgICAgICAg", "ICfXmdeV150g15HXl9eV15PXqScsICAgIGZhbHNlKSwKICAgIHNmQnJhY2tldGVkKHdlZWtQdHosICAg", "ICAgICAgICAn16nXkdeV16InLCAgICAgICAgIGZhbHNlKSwKICAgIHNmQnJhY2tldGVkKG1TZWYsICAg", "ICAgICAgICAgICAn15fXldeT16knLCAgICAgICAgIGZhbHNlKSwKICAgIC4uLnlSZXZlcnNlZC5tYXAo", "KGNvbXAsaSkgPT4gc2ZCcmFja2V0ZWQoY29tcC5zZWYsIHlMYWJlbHNbaV18fCcnLCBmYWxzZSkpCiAg", "XTsKCiAgY29uc3Qgcm93MWIgPQogICAgYDxkaXYgY2xhc3M9ImRsLWF0dHItbGluZSI+YCsKICAgIGA8", "c3BhbiBjbGFzcz0iZGwtYXR0ci1kYXRlIj4ke2RvbX3XsyDXkSR7aGViLm19PC9zcGFuPmArCiAgICBg", "PHNwYW4gY2xhc3M9ImRsLWF0dHItc2VwIj4gPC9zcGFuPmArCiAgICBhdHRySXRlbXMuam9pbignPHNw", "YW4gY2xhc3M9ImRsLWF0dHItc3BhY2UiPjwvc3Bhbj4nKSsKICAgIGA8L2Rpdj5gOwoKICAvKiDilIDi", "lIAgUm93IDIg4oCUIHBpbGxzOiDXmdeV150g15TXqdeR15XXoiBmaXJzdCwgdGhlbiDXqdeR15XXoiwg", "dGhlbiDXmdeV150g15HXl9eV15PXqSwgdGhlbiDXl9eV15PXqSwgdGhlbiDXqdee15nXmNeUIOKUgOKU", "gCAqLwogIGNvbnN0IGRheVBpbGwgPSBwaWxsKERBWV9OQU1FU1tkYXlKc10sIERBWV9TRUZbZGF5SnNd", "LCBzZWZBYmJyZXY3KERBWV9TRUZbZGF5SnNdKSk7CiAgY29uc3Qgd2Vla1BpbGwgPSBwaWxsKGDXqdeR", "15XXoiAke3RvSE4od2Vlayl9YCwgd2Vla1B0eiwgc2VmQWJicmV2NCh3ZWVrUHR6KSk7CiAgY29uc3Qg", "ZG9tUGlsbEtleSA9IGRvbVNlZiA9PT0gJ9eb16rXqCcgPyAna2V0ZXInIDogc0tleShkb21TZWYpOwog", "IGNvbnN0IGRvbUFiYnJldiAgPSBkb21TZWYgPT09ICfXm9eq16gnID8gc2VmQWJicmV2OChkb21TZWYp", "IDogc2VmQWJicmV2Nyhkb21TZWYpOwogIGNvbnN0IGRvbVBpbGwgPQogICAgYDxzcGFuIGNsYXNzPSJw", "aWxsIHBpbGwtJHtkb21QaWxsS2V5fSI+YCsKICAgIGA8c3BhbiBjbGFzcz0icGlsbC1ib2R5Ij48c3Bh", "biBjbGFzcz0icGlsbC1uYW1lIj4ke2RvbX0g15HXl9eV15PXqTwvc3Bhbj48c3BhbiBjbGFzcz0icGls", "bC10YWciPiR7ZG9tU2VmfTwvc3Bhbj48L3NwYW4+YCsKICAgIGA8c3BhbiBjbGFzcz0ic2FiLWxpbmUi", "PiR7ZG9tQWJicmV2fTwvc3Bhbj5gKwogICAgYDwvc3Bhbj5gOwogIGNvbnN0IG1QdHogICAgID0gbW9u", "dGhQYXJ0enVmKG1pKTsKICBjb25zdCBtUHR6SHRtbCA9IGA8c3BhbiBjbGFzcz0icGlsbC1wdHoiPiR7", "bVB0en08L3NwYW4+YDsKICBjb25zdCBtb250aFBpbGwgPSBwaWxsV2l0aEV4dHJhKGhlYi5tLCBtU2Vm", "LCBzZWZBYmJyZXY3KG1TZWYpLCBtUHR6SHRtbCk7CiAgY29uc3Qgc2htaXRhTGFiZWwgPSBzUG9zPT09", "NiA/ICfXqdeg16og16nXnteZ15jXlCcgOiBg16nXnteZ15jXlCAke1NITUlUQV9MW3NQb3NdfWA7CiAg", "Y29uc3Qgc2htaXRhUGlsbCAgPSBwaWxsKHNobWl0YUxhYmVsLCBTSE1JVEFfU0VGW3NQb3NdLCBzZWZB", "YmJyZXY3KFNITUlUQV9TRUZbc1Bvc10pKTsKCiAgY29uc3Qgcm93MiA9CiAgICBgPGRpdiBjbGFzcz0i", "ZGwtcGlsbHMiPmArCiAgICBkYXlQaWxsKwogICAgYDxzcGFuIGNsYXNzPSJkbC1kb3QiPsK3PC9zcGFu", "PmArCiAgICB3ZWVrUGlsbCsKICAgIGA8c3BhbiBjbGFzcz0iZGwtZG90Ij7Ctzwvc3Bhbj5gKwogICAg", "ZG9tUGlsbCsKICAgIGA8c3BhbiBjbGFzcz0iZGwtZG90Ij7Ctzwvc3Bhbj5gKwogICAgbW9udGhQaWxs", "KwogICAgYDxzcGFuIGNsYXNzPSJkbC1kb3QiPsK3PC9zcGFuPmArCiAgICBzaG1pdGFQaWxsKwogICAg", "YDwvZGl2PmA7CgogIC8qIOKUgOKUgCBSb3cgMyDigJQgeWVhciBjaGlwczogdW5pdHPihpJ0ZW5z4oaS", "aHVuZHJlZHPihpJtaWwsIHRoZW4g15nXldeR15wg4pSA4pSAICovCiAgY29uc3QgeXZDaGlwc09yZGVy", "ZWQgPSBbLi4ueUNvbXBzXS5yZXZlcnNlKCkubWFwKGNvbXAgPT4gewogICAgY29uc3QgYWJiciA9IGNv", "bXAuc2VmID09PSAn15vXqteoJyA/IHNlZkFiYnJldjgoY29tcC5zZWYpIDogc2VmQWJicmV2Nyhjb21w", "LnNlZik7CiAgICBjb25zdCBrID0gY29tcC5zZWYgPT09ICfXm9eq16gnID8gJ2tldGVyJyA6IHNLZXko", "Y29tcC5zZWYpOwogICAgY29uc3QgbGFiZWxTaG9ydCA9IGNvbXAubGFiZWwuaW5jbHVkZXMoJ9eQ15zX", "pCcpID8gJ9eQ15zXpNeZ150nCiAgICAgICAgICAgICAgICAgICAgIDogY29tcC5sYWJlbC5pbmNsdWRl", "cygn157XkNeVJykgPyAn157XkNeV16onCiAgICAgICAgICAgICAgICAgICAgIDogY29tcC5sYWJlbC5p", "bmNsdWRlcygn16LXqdeoJyl8fGNvbXAubGFiZWwuaW5jbHVkZXMoJ9ep157XldegJyl8fGNvbXAubGFi", "ZWwuaW5jbHVkZXMoJ9ep15HXoicpfHxjb21wLmxhYmVsLmluY2x1ZGVzKCfXqdep15knKXx8Y29tcC5s", "YWJlbC5pbmNsdWRlcygn15fXnteZJyl8fGNvbXAubGFiZWwuaW5jbHVkZXMoJ9eQ16jXkScpfHxjb21w", "LmxhYmVsLmluY2x1ZGVzKCfXqdec15UnKXx8Y29tcC5sYWJlbC5pbmNsdWRlcygn16LXqdeoJykgPyAn", "16LXqdeo15XXqicKICAgICAgICAgICAgICAgICAgICAgOiAn16nXoNeUJzsKICAgIHJldHVybiBgPHNw", "YW4gY2xhc3M9Inl2LWNoaXAgZGwtcy0ke2t9Ij5gKwogICAgICBgPHNwYW4gY2xhc3M9Inl2LWxhYmVs", "Ij4ke2xhYmVsU2hvcnR9PC9zcGFuPmArCiAgICAgIGA8c3BhbiBjbGFzcz0ieXYtdG9wIj5gKwogICAg", "ICBgPHNwYW4gY2xhc3M9Inl2LXN0ciI+JHtjb21wLnN0cn08L3NwYW4+YCsKICAgICAgYDxzcGFuIGNs", "YXNzPSJ5di1kYXNoIj7igJQ8L3NwYW4+YCsKICAgICAgYDxzcGFuIGNsYXNzPSJ5di1zZWYiPiR7Y29t", "cC5zZWZ9PC9zcGFuPmArCiAgICAgIGA8L3NwYW4+YCsKICAgICAgYDxzcGFuIGNsYXNzPSJzYWItbGlu", "ZSI+JHthYmJyfTwvc3Bhbj5gKwogICAgICBgPC9zcGFuPmA7CiAgfSkuam9pbignICcpOwoKICAvKiDX", "mdeV15HXnCDXode015Yg4oCUICLXmdeV15HXnCIgaW4gbmV1dHJhbCB3aGl0ZSwgIteh17TXliIgaW4g", "Z29sZCB0aWZlcmV0ICovCiAgY29uc3QgeW92ZWxDaGlwID0KICAgIGA8c3BhbiBjbGFzcz0ieXYtY2hp", "cCBkbC1zLXllc29kIj5gKwogICAgYDxzcGFuIGNsYXNzPSJ5di10b3AiPmArCiAgICBgPHNwYW4gY2xh", "c3M9Inl2LXN0ciIgc3R5bGU9ImNvbG9yOnJnYmEoMjIwLDIxMCwxOTAsLjkwKSI+15nXldeR15w8L3Nw", "YW4+YCsKICAgIGA8c3BhbiBjbGFzcz0ieXYtZGFzaCI+IDwvc3Bhbj5gKwogICAgYDxzcGFuIGNsYXNz", "PSJ5di1zZWYiIHN0eWxlPSJjb2xvcjp2YXIoLS10aWZlcmV0KTtmb250LXdlaWdodDo5MDA7dGV4dC1z", "aGFkb3c6MCAwIDhweCByZ2JhKDI1NSwyMTQsMCwuOCkiPteh17TXljwvc3Bhbj5gKwogICAgYDwvc3Bh", "bj5gKwogICAgYDwvc3Bhbj5gOwoKICBjb25zdCByb3czID0KICAgIGA8ZGl2IGNsYXNzPSJkbC1zdWIi", "PmArCiAgICB5dkNoaXBzT3JkZXJlZCsKICAgIGA8c3BhbiBjbGFzcz0iZGwtZG90Ij58PC9zcGFuPmAr", "CiAgICB5b3ZlbENoaXArCiAgICBgPC9kaXY+YDsKCiAgZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoImRh", "dGUtbGluZSIpLmlubmVySFRNTCA9IHJvdzErcm93MWIrcm93Mityb3czOwoKICAvKiBTVkcgcmluZ3Mg", "Ki8KICBjb25zdCByRz1kb2N1bWVudC5nZXRFbGVtZW50QnlJZCgicmluZ3MiKTsKICBjb25zdCBkZWZz", "PWRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCJhcmNEZWZzIik7CiAgckcuaW5uZXJIVE1MPSIiOyBkZWZz", "LmlubmVySFRNTD0iIjsgX3BpZD0wOwogIGNvbnN0IENYPTIyMCxDWT0yMjA7CgogIGRyYXdIb3VyUmlu", "ZyhyRyxkZWZzLENYLENZLDc4LDExOCxoKTsKCiAgZHJhd1JpbmcockcsZGVmcyxDWCxDWSwxMjAsMTQy", "LAogICAgREFZX05BTUVTLm1hcCgoZCxpKT0+KHtsYWJlbDpkLnJlcGxhY2UoIteZ15XXnSAiLCIiKSxz", "ZWZpOkRBWV9TRUZbaV0sYWN0aXZlOmk9PT1kYXlKc30pKSw3LDUpOwoKICBkcmF3UmluZyhyRyxkZWZz", "LENYLENZLDE0NCwxNjIsCiAgICBXRUVLX1BUWi5tYXAoKHAsaSk9Pih7bGFiZWw6YNep15HXldeiICR7", "dG9ITihpKzEpfWAsc2VmaTpwLGFjdGl2ZTooaSsxKT09PXdlZWsscGFydHp1Zjp0cnVlfSkpLDYuNSw1", "KTsKCiAgZHJhd1JpbmcockcsZGVmcyxDWCxDWSwxNjQsMTg2LAogICAgTU9OVEhfTkFNRVMubWFwKCht", "LGkpPT4oe2xhYmVsOm0sc2VmaTpNT05USF9TRUZbaV0sYWN0aXZlOmk9PT1taX0pKSw2LDQuNSk7Cgog", "IC8qIOKUgOKUgCBTaG1pdGEgcmluZyAoMTg4LTIwMykg4pSA4pSAICovCiAgZHJhd1JpbmcockcsZGVm", "cyxDWCxDWSwxODgsMjAzLAogICAgU0hNSVRBX0wubWFwKChzLGkpPT4oe2xhYmVsOnMsc2VmaTpTSE1J", "VEFfU0VGW2ldLGFjdGl2ZTppPT09c1Bvc30pKSw1LjUsNCk7CgogIC8qIOKUgOKUgCBSaW5nIHRpdGxl", "IGxhYmVscyDigJQgZHJhd24gYXQgMTItbydjbG9jayBpbnNpZGUgZWFjaCByaW5nIGJhbmQg4pSA4pSA", "ICovCiAgZHJhd1JpbmdUaXRsZShyRyxkZWZzLENYLENZLDEzMSwn15nXldedJyk7ICAgICAgIC8vIGRh", "eSByaW5nIG1pZCAgMTIwLTE0MgogIGRyYXdSaW5nVGl0bGUockcsZGVmcyxDWCxDWSwxNTMsJ9ep15HX", "ldeiJyk7ICAgICAgLy8gd2VlayByaW5nIG1pZCAxNDQtMTYyCiAgZHJhd1JpbmdUaXRsZShyRyxkZWZz", "LENYLENZLDE3NSwn15fXldeT16knKTsgICAgICAvLyBtb250aCByaW5nIG1pZCAxNjQtMTg2CiAgZHJh", "d1JpbmdUaXRsZShyRyxkZWZzLENYLENZLDE5Niwn16nXnteZ15jXlCcpOyAgICAgLy8gc2htaXRhIHJp", "bmcgbWlkIDE4OC0yMDMKCiAgLyogQ2VudHJlICovCiAgY29uc3QgY2c9ZG9jdW1lbnQuZ2V0RWxlbWVu", "dEJ5SWQoImNpbmZvIik7CiAgY2cuaW5uZXJIVE1MPSIiOwogIGNvbnN0IFt3MSx3Ml09SE9VUl9OQU1F", "U1toXS5zcGxpdCgiICIpOwogIC8vIEN1cnJlbnQgdGltZSBzdHJpbmcgZm9yIGNlbnRyZQogIGNvbnN0", "IF9jbj1uZXcgRGF0ZSgpLF9jaD1fY24uZ2V0SG91cnMoKSxfY209U3RyaW5nKF9jbi5nZXRNaW51dGVz", "KCkpLnBhZFN0YXJ0KDIsJzAnKTsKICBjb25zdCBfY2gxMj0oX2NoJTEyKXx8MTIsX2NhcD1fY2g8MTI/", "IkFNIjoiUE0iOwogIGNvbnN0IGNlbnRyZVRpbWU9YCR7X2NoMTJ9OiR7X2NtfSAke19jYXB9YDsKICBb", "CiAgICB7dDp3MSwgICAgICAgICAgZnM6MTgsZmlsbDoiI0ZGRjlDNCIsICAgICAgICAgIGZsdDoidXJs", "KCN0Z2xvdzIpIixkeTotMjgsZnc6IjkwMCJ9LAogICAge3Q6dzIsICAgICAgICAgIGZzOjE4LGZpbGw6", "IiNGRkY5QzQiLCAgICAgICAgICBmbHQ6InVybCgjdGdsb3cyKSIsZHk6LTgsIGZ3OiI5MDAifSwKICAg", "IHt0OmNlbnRyZVRpbWUsICBmczoxMyxmaWxsOiIjODBEOEZGIiwgICAgICAgICAgIGZsdDoidXJsKCN0", "Z2xvdykiLCBkeToxMSwgZnc6IjMwMCIsdGFnOiJjZW50cmUtdGltZSJ9LAogICAge3Q6J9ep16LXlCcs", "ZnM6OSxmaWxsOiJyZ2JhKDIxNSwxODIsNDIsLjg1KSIsZmx0Om51bGwsZHk6MjYsIGZ3OiI0MDAifSwK", "ICBdLmZvckVhY2gobG49PnsKICAgIGNvbnN0IGVsPW1rKCJ0ZXh0Iix7eDpDWCx5OkNZK2xuLmR5LCJm", "b250LXNpemUiOmxuLmZzLAogICAgICAiZm9udC1mYW1pbHkiOiJGcmFuayBSdWhsIExpYnJlLCBBcmlh", "bCBIZWJyZXcsIE5vdG8gU2FucyBIZWJyZXcsIERhdmlkLCBzZXJpZiIsZmlsbDpsbi5maWxsLAogICAg", "ICAiZm9udC13ZWlnaHQiOmxuLmZ3LCJ0ZXh0LWFuY2hvciI6Im1pZGRsZSIsImRvbWluYW50LWJhc2Vs", "aW5lIjoiY2VudHJhbCJ9KTsKICAgIGlmKGxuLnRhZykgZWwuc2V0QXR0cmlidXRlKCJkYXRhLWNlbnRy", "ZS10aW1lIiwiMSIpOwogICAgaWYobG4uZmx0KSBlbC5zZXRBdHRyaWJ1dGUoImZpbHRlciIsbG4uZmx0", "KTsKICAgIGVsLnRleHRDb250ZW50PWxuLnQ7CiAgICBjZy5hcHBlbmRDaGlsZChlbCk7CiAgfSk7Cgog", "IGRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCJmaXJlQmciKS5zZXRBdHRyaWJ1dGUoIm9wYWNpdHkiLCIw", "LjY0Iik7CiAgYnVpbGRXaGVlbChoKTsKfQoKLyog4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ", "4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ", "4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQCiAgIFRJQ0sK4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ", "4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ", "4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQICovCmxldCBsYXN0TWluPS0xOwpmdW5jdGlv", "biB0aWNrKCkgewogIGNvbnN0IG5vdz1uZXcgRGF0ZSgpLGg9bm93LmdldEhvdXJzKCksbT1ub3cuZ2V0", "TWludXRlcygpOwogIGNvbnN0IG1tPVN0cmluZyhtKS5wYWRTdGFydCgyLCcwJyk7CiAgY29uc3Qgc3M9", "U3RyaW5nKG5vdy5nZXRTZWNvbmRzKCkpLnBhZFN0YXJ0KDIsJzAnKTsKICBjb25zdCBoMTI9KGglMTIp", "fHwxMixhcD1oPDEyPyJBTSI6IlBNIjsKICBkb2N1bWVudC5nZXRFbGVtZW50QnlJZCgiY2xvY2siKS50", "ZXh0Q29udGVudD1gJHtoMTJ9OiR7bW19OiR7c3N9ICR7YXB9YDsKICBpZihoIT09bGFzdEhvdXIpeyB1", "cGRhdGUoKTsgcmV0dXJuOyB9CiAgLy8gVXBkYXRlIGNlbnRyZSB0aW1lIGV2ZXJ5IG1pbnV0ZQogIGlm", "KG0hPT1sYXN0TWluKXsKICAgIGxhc3RNaW49bTsKICAgIGNvbnN0IGNpPWRvY3VtZW50LmdldEVsZW1l", "bnRCeUlkKCJjaW5mbyIpOwogICAgaWYoY2kpewogICAgICBjb25zdCB0RWw9Y2kucXVlcnlTZWxlY3Rv", "cignW2RhdGEtY2VudHJlLXRpbWVdJyk7CiAgICAgIGlmKHRFbCkgdEVsLnRleHRDb250ZW50PWAke2gx", "Mn06JHttbX0gJHthcH1gOwogICAgfQogIH0KfQoKLyog4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ", "4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ", "4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQCiAgIFJFU0laRSDigJQgcmVjZW50ZXIgd2hlZWwK", "4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ", "4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQICov", "CmxldCBfcnQ7CndpbmRvdy5hZGRFdmVudExpc3RlbmVyKCJyZXNpemUiLCgpPT57CiAgY2xlYXJUaW1l", "b3V0KF9ydCk7CiAgX3J0PXNldFRpbWVvdXQoKCk9PmJ1aWxkV2hlZWwobGFzdEhvdXIpLDEyMCk7Cn0p", "OwoKLyog4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ", "4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ", "4pWQCiAgIEJPT1QK4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ", "4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ", "4pWQ4pWQ4pWQICovCnVwZGF0ZSgpOwphbmltYXRlRmlyZSgpOwpzZXRJbnRlcnZhbCh0aWNrLDEwMDAp", "OwoKLyog4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ", "4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ", "4pWQCiAgIFZJRVcgU1dJVENIRVIg4oCUIHJpbmdzIOKGlCBzdGFja2VkIGNhcmRzCuKVkOKVkOKVkOKV", "kOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKV", "kOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkCAqLwpsZXQgX3N0YWNr", "VmlldyA9IGZhbHNlOwoKZnVuY3Rpb24gdG9nZ2xlVmlldygpIHsKICBfc3RhY2tWaWV3ID0gIV9zdGFj", "a1ZpZXc7CiAgY29uc3Qgc3YgID0gZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoJ3N0YWNrLXZpZXcnKTsK", "ICBjb25zdCBydyAgPSBkb2N1bWVudC5nZXRFbGVtZW50QnlJZCgncmluZy13cmFwJyk7CiAgY29uc3Qg", "aHcgID0gZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoJ2hvdXItd2hlZWwnKTsKICBjb25zdCBidG4gPSBk", "b2N1bWVudC5nZXRFbGVtZW50QnlJZCgndmlldy10b2dnbGUnKTsKCiAgaWYgKF9zdGFja1ZpZXcpIHsK", "ICAgIHN2LmNsYXNzTGlzdC5hZGQoJ2FjdGl2ZScpOwogICAgcncuc3R5bGUudmlzaWJpbGl0eSA9ICdo", "aWRkZW4nOwogICAgaHcuc3R5bGUudmlzaWJpbGl0eSA9ICdoaWRkZW4nOwogICAgYnRuLnRleHRDb250", "ZW50ID0gJ+KXjic7CiAgICBidG4udGl0bGUgPSAn15fXlteV16gg15zXmNeR16LXldeqJzsKICAgIGJ1", "aWxkU3RhY2tWaWV3KCk7CiAgfSBlbHNlIHsKICAgIHN2LmNsYXNzTGlzdC5yZW1vdmUoJ2FjdGl2ZScp", "OwogICAgcncuc3R5bGUudmlzaWJpbGl0eSA9ICd2aXNpYmxlJzsKICAgIGh3LnN0eWxlLnZpc2liaWxp", "dHkgPSAndmlzaWJsZSc7CiAgICBidG4udGV4dENvbnRlbnQgPSAn4oqeJzsKICAgIGJ0bi50aXRsZSA9", "ICfXqtem15XXkteqINeb16jXmNeZ16HXmdedJzsKICB9Cn0KCmZ1bmN0aW9uIGJ1aWxkU3RhY2tWaWV3", "KCkgewogIGNvbnN0IHN2ICA9IGRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCdzdGFjay12aWV3Jyk7CiAg", "Y29uc3Qgbm93ID0gbmV3IERhdGUoKTsKICBjb25zdCBoICAgPSBub3cuZ2V0SG91cnMoKTsKICBjb25z", "dCBoZWIgPSBnZXRIZWJEYXRlKCk7CiAgY29uc3QgZGF5SnMgID0gbm93LmdldERheSgpOwogIGNvbnN0", "IHdlZWsgICA9IE1hdGguY2VpbChoZWIuZCAvIDcpOwogIGNvbnN0IG1pICAgICA9IG1JZHgoaGViLm0p", "OwogIGNvbnN0IHNQb3MgICA9IChoZWIueSAtIDEpICUgNzsKICBjb25zdCB3ZWVrUHR6ID0gV0VFS19Q", "VFpbKHdlZWstMSklNF0gfHwgJ9ee15zXm9eV16onOwogIGNvbnN0IG1TZWYgICA9IE1PTlRIX1NFRltN", "YXRoLm1heCgwLG1pKV07CiAgY29uc3QgZG9tU2VmID0gZG9tU2VmaXJhaChoZWIuZCk7CiAgY29uc3Qg", "eUNvbXBzID0geWVhckNvbXBvbmVudHMoaGViLnkpOwogIGNvbnN0IHlSZXYgICA9IFsuLi55Q29tcHNd", "LnJldmVyc2UoKTsKICBjb25zdCB5TGFiZWxzID0gWyfXqdeg15QnLCfXotep16jXldeqJywn157XkNeV", "16onLCfXkNec16TXmdedJ107CgogIC8vIEhlbHBlcjogYnVpbGQgYWJicmV2aWF0aW9uIGxpbmUgZm9y", "IGEgc2VmaXJhaAogIGZ1bmN0aW9uIHNhYkxpbmUoc2VmLCBsaXN0KSB7CiAgICByZXR1cm4gc2VmQWJi", "cmV2TGluZShzZWYsIGxpc3QpOwogIH0KCiAgLy8gRWFjaCByb3c6IFtsYWJlbCwgdmFsdWUsIHNlZmly", "YWgsIGFiYnJldkh0bWxdCiAgY29uc3Qgcm93cyA9IFsKICAgIHsgbGFiZWw6J9ep16LXlCcsICAgICAg", "ICB2YWx1ZTogSE9VUl9OQU1FU1toXSwKICAgICAgc2VmOiBIT1VSX1NFRltoXSwgICBhYmJyOiBzZWZB", "YmJyZXY3KEhPVVJfU0VGW2hdKSB9LAogICAgeyBsYWJlbDon15nXldedJywgICAgICAgIHZhbHVlOiBE", "QVlfTkFNRVNbZGF5SnNdLAogICAgICBzZWY6IERBWV9TRUZbZGF5SnNdLGFiYnI6IHNlZkFiYnJldjco", "REFZX1NFRltkYXlKc10pIH0sCiAgICB7IGxhYmVsOifXqdeR15XXoicsICAgICAgIHZhbHVlOiBg16nX", "kdeV16IgJHt0b0hOKHdlZWspfWAsCiAgICAgIHNlZjogd2Vla1B0eiwgICAgICAgIGFiYnI6IHNlZkFi", "YnJldjQod2Vla1B0eikgfSwKICAgIHsgbGFiZWw6J9eZ15XXnSDXkdeX15XXk9epJywgdmFsdWU6IGAk", "e3RvSE4oaGViLmQpfSDXkdeX15XXk9epYCwKICAgICAgc2VmOiBkb21TZWYsICAgICAgICAgYWJicjog", "ZG9tU2VmPT09J9eb16rXqCcgPyBzZWZBYmJyZXY4KGRvbVNlZikgOiBzZWZBYmJyZXY3KGRvbVNlZikg", "fSwKICAgIHsgbGFiZWw6J9eX15XXk9epJywgICAgICAgdmFsdWU6IGhlYi5tLAogICAgICBzZWY6IG1T", "ZWYsICAgICAgICAgICBhYmJyOiBzZWZBYmJyZXY3KG1TZWYpIH0sCiAgICB7IGxhYmVsOifXqdee15nX", "mNeUJywgICAgIHZhbHVlOiBTSE1JVEFfTFtzUG9zXT09PTYgPyAn16nXoNeqINep157XmdeY15QnIDog", "YNep157XmdeY15QgJHtTSE1JVEFfTFtzUG9zXX1gLAogICAgICBzZWY6IFNITUlUQV9TRUZbc1Bvc10s", "IGFiYnI6IHNlZkFiYnJldjcoU0hNSVRBX1NFRltzUG9zXSkgfSwKICAgIHsgbGFiZWw6J9eZ15XXkdec", "JywgICAgICAgdmFsdWU6ICfXode015YnLAogICAgICBzZWY6ICfXmdeh15XXkycsICAgICAgICAgYWJi", "cjogc2VmQWJicmV2Nygn15nXodeV15MnKSwKICAgICAgdmFsU3R5bGU6ICdjb2xvcjp2YXIoLS10aWZl", "cmV0KTtmb250LXdlaWdodDo5MDA7dGV4dC1zaGFkb3c6MCAwIDhweCByZ2JhKDI1NSwyMTQsMCwuOCkn", "IH0sCiAgICAuLi55UmV2Lm1hcCgoY29tcCxpKSA9PiAoewogICAgICBsYWJlbDogeUxhYmVsc1tpXSB8", "fCAnJywKICAgICAgdmFsdWU6IGNvbXAuc3RyLAogICAgICBzZWY6ICAgY29tcC5zZWYsCiAgICAgIGFi", "YnI6ICBjb21wLnNlZiA9PT0gJ9eb16rXqCcgPyBzZWZBYmJyZXY4KGNvbXAuc2VmKSA6IHNlZkFiYnJl", "djcoY29tcC5zZWYpCiAgICB9KSkKICBdOwoKICBjb25zdCBzZWZDb2xvcnMgPSB7CiAgICAn15fXodeT", "JzondmFyKC0tY2hlc2VkKScsJ9eS15HXldeo15QnOid2YXIoLS1nZXZ1cmFoKScsJ9eq16TXkNeo16on", "Oid2YXIoLS10aWZlcmV0KScsCiAgICAn16DXpteXJzondmFyKC0tbmV0emFjaCknLCfXlNeV15MnOid2", "YXIoLS1ob2QpJywn15nXodeV15MnOid2YXIoLS15ZXNvZCknLAogICAgJ9ee15zXm9eV16onOid2YXIo", "LS1tYWxjaHV0KScsJ9eb16rXqCc6JyNFOEU4RkYnCiAgfTsKCiAgc3YuaW5uZXJIVE1MID0gcm93cy5t", "YXAoKHJvdywgaWR4KSA9PiB7CiAgICBjb25zdCBzZWZDb2wgPSBzZWZDb2xvcnNbcm93LnNlZl0gfHwg", "JyNmZmYnOwogICAgY29uc3QgdmFsU3R5bGUgPSByb3cudmFsU3R5bGUgfHwgJyc7CiAgICBjb25zdCBp", "c0RpdiA9IGlkeCA+IDAgJiYgKGlkeCA9PT0gMSB8fCBpZHggPT09IDMgfHwgaWR4ID09PSA1IHx8IGlk", "eCA9PT0gNik7CiAgICBjb25zdCBkaXZpZGVyID0gaXNEaXYgPyAnPGRpdiBjbGFzcz0ic2MtZGl2aWRl", "ciI+PC9kaXY+JyA6ICcnOwogICAgcmV0dXJuIGRpdmlkZXIgKwogICAgICBgPGRpdiBjbGFzcz0ic3Rh", "Y2stY2FyZCI+CiAgICAgICAgPHNwYW4gY2xhc3M9InNjLWxhYmVsIj4ke3Jvdy5sYWJlbH08L3NwYW4+", "CiAgICAgICAgPHNwYW4gY2xhc3M9InNjLXZhbHVlIiBzdHlsZT0iJHt2YWxTdHlsZX0iPiR7cm93LnZh", "bHVlfTwvc3Bhbj4KICAgICAgICA8c3BhbiBjbGFzcz0ic2Mtc2VmIiBzdHlsZT0iY29sb3I6JHtzZWZD", "b2x9Ij4ke3Jvdy5zZWZ9PC9zcGFuPgogICAgICAgIDxzcGFuIGNsYXNzPSJzYy1hYmJyZXYgc2FiLWxp", "bmUiPiR7cm93LmFiYnJ9PC9zcGFuPgogICAgICA8L2Rpdj5gOwogIH0pLmpvaW4oJycpOwp9CgovKiDi", "lZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDi", "lZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZAKICAg", "SU5URVJMT0NLSU5HIFNUQVIgT0YgREFWSUQgTEFUVElDRQogICBXZWF2aW5nIHRyaWFuZ2xlIHBhdHRl", "cm4gbGlrZSB0aGUgcmVmZXJlbmNlIGltYWdlLAogICB3aXRoIG5lc3RlZCBzY2FsZXMgKyBzZWZpcmFo", "IG5lb24gcHVsc2VzCuKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKV", "kOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKV", "kOKVkOKVkOKVkCAqLwooZnVuY3Rpb24gaW5pdExhdHRpY2VCZygpIHsKICBjb25zdCBjdiAgPSBkb2N1", "bWVudC5nZXRFbGVtZW50QnlJZCgnYmdDYW52YXMnKTsKICBjb25zdCBjdHggPSBjdi5nZXRDb250ZXh0", "KCcyZCcpOwoKICAvLyDilIDilIAgU2VmaXJhaCBuZW9uIGNvbG9ycyDilIDilIAKICBjb25zdCBORU9O", "ID0gWwogICAgWzI1NSwyMjAsMF0sICAgIC8vIHRpZmVyZXQgIGdvbGQKICAgIFs2NiwxNjUsMjQ1XSwg", "ICAvLyBjaGVzZWQgICBibHVlCiAgICBbMjM5LDgzLDgwXSwgICAgLy8gZ2V2dXJhaCAgcmVkCiAgICBb", "MCwyMzAsMTE4XSwgICAgLy8gbmV0emFjaCAgZ3JlZW4KICAgIFsyMzQsMTI4LDI1Ml0sICAvLyBob2Qg", "ICAgICBtYWdlbnRhCiAgICBbMTc5LDEzNiwyNTVdLCAgLy8geWVzb2QgICAgdmlvbGV0CiAgXTsKCiAg", "bGV0IFcsIEgsIGFsbFNlZ3MgPSBbXSwgcHVsc2VzID0gW107CiAgbGV0IGZyYW1lID0gMDsKCiAgLy8g", "4pSA4pSAIEJ1aWxkIG9uZSBTdGFyIG9mIERhdmlkIChpbnRlcmxvY2tpbmcgcmliYm9uIHN0eWxlKSDi", "lIDilIAKICAvLyBFYWNoIHN0YXIgPSAyIG92ZXJsYXBwaW5nIHRyaWFuZ2xlcywgZWFjaCB0cmlhbmds", "ZSBkcmF3biBhcwogIC8vIGEgdGhpY2sgcmliYm9uIHdpdGggaW5uZXIgcGFyYWxsZWwgbGluZXMgKHRo", "ZSB3ZWF2ZSBpbGx1c2lvbikKICBmdW5jdGlvbiBzdGFyU2VnbWVudHMoY3gsIGN5LCBSLCBkZXB0aCkg", "ewogICAgY29uc3Qgc2VncyA9IFtdOwogICAgY29uc3QgcmliYm9uID0gUiAqIDAuMTM7IC8vIHJpYmJv", "biBnYXAKICAgIGZvciAobGV0IHRyaSA9IDA7IHRyaSA8IDI7IHRyaSsrKSB7CiAgICAgIGNvbnN0IHB0", "cyA9IFtdOwogICAgICBmb3IgKGxldCBpID0gMDsgaSA8IDM7IGkrKykgewogICAgICAgIGNvbnN0IGEg", "PSAoaSAqIDEyMCArIHRyaSAqIDYwIC0gOTApICogTWF0aC5QSSAvIDE4MDsKICAgICAgICBwdHMucHVz", "aChbY3ggKyBSICogTWF0aC5jb3MoYSksIGN5ICsgUiAqIE1hdGguc2luKGEpXSk7CiAgICAgIH0KICAg", "ICAgLy8gT3V0ZXIgdHJpYW5nbGUgZWRnZXMKICAgICAgZm9yIChsZXQgaSA9IDA7IGkgPCAzOyBpKysp", "IHsKICAgICAgICBjb25zdCBhID0gcHRzW2ldLCBiID0gcHRzWyhpKzEpJTNdOwogICAgICAgIHNlZ3Mu", "cHVzaChbYVswXSxhWzFdLGJbMF0sYlsxXV0pOwogICAgICB9CiAgICAgIC8vIElubmVyIHBhcmFsbGVs", "IHJpYmJvbiBsaW5lcyAob2Zmc2V0IGlud2FyZCkKICAgICAgZm9yIChsZXQgaSA9IDA7IGkgPCAzOyBp", "KyspIHsKICAgICAgICBjb25zdCBhID0gcHRzW2ldLCBiID0gcHRzWyhpKzEpJTNdOwogICAgICAgIGNv", "bnN0IGR4ID0gYlswXS1hWzBdLCBkeSA9IGJbMV0tYVsxXTsKICAgICAgICBjb25zdCBsZW4gPSBNYXRo", "LnNxcnQoZHgqZHgrZHkqZHkpOwogICAgICAgIGNvbnN0IG54ID0gLWR5L2xlbiAqIHJpYmJvbiwgbnkg", "PSBkeC9sZW4gKiByaWJib247CiAgICAgICAgc2Vncy5wdXNoKFthWzBdK254LGFbMV0rbnksIGJbMF0r", "bngsYlsxXStueV0pOwogICAgICAgIHNlZ3MucHVzaChbYVswXS1ueCxhWzFdLW55LCBiWzBdLW54LGJb", "MV0tbnldKTsKICAgICAgfQogICAgICAvLyBJbm5lciBzbWFsbGVyIGVjaG8gdHJpYW5nbGUgKG5lc3Rp", "bmcpCiAgICAgIGlmIChkZXB0aCA+IDApIHsKICAgICAgICBjb25zdCByMiA9IFIgKiAwLjM4OwogICAg", "ICAgIGZvciAobGV0IGkgPSAwOyBpIDwgMzsgaSsrKSB7CiAgICAgICAgICBjb25zdCBhMiA9IChpKjEy", "MCArIHRyaSo2MCAtIDkwKSAqIE1hdGguUEkvMTgwOwogICAgICAgICAgY29uc3QgcDIgPSBbY3ggKyBy", "MipNYXRoLmNvcyhhMiksIGN5ICsgcjIqTWF0aC5zaW4oYTIpXTsKICAgICAgICAgIGNvbnN0IGEzID0g", "KChpKzEpKjEyMCArIHRyaSo2MCAtIDkwKSAqIE1hdGguUEkvMTgwOwogICAgICAgICAgY29uc3QgcDMg", "PSBbY3ggKyByMipNYXRoLmNvcyhhMyksIGN5ICsgcjIqTWF0aC5zaW4oYTMpXTsKICAgICAgICAgIHNl", "Z3MucHVzaChbcDJbMF0scDJbMV0scDNbMF0scDNbMV1dKTsKICAgICAgICB9CiAgICAgIH0KICAgIH0K", "ICAgIC8vIENyb3NzLWxpbmVzIGNvbm5lY3RpbmcgdGhlIDYgcG9pbnRzIChoZXhhZ3JhbSBzcG9rZXMp", "CiAgICBmb3IgKGxldCBpID0gMDsgaSA8IDY7IGkrKykgewogICAgICBjb25zdCBhMSA9IChpKjYwIC0g", "OTApICogTWF0aC5QSS8xODA7CiAgICAgIGNvbnN0IGEyID0gKChpKzIpKjYwIC0gOTApICogTWF0aC5Q", "SS8xODA7CiAgICAgIHNlZ3MucHVzaChbCiAgICAgICAgY3ggKyBSKk1hdGguY29zKGExKSwgY3kgKyBS", "Kk1hdGguc2luKGExKSwKICAgICAgICBjeCArIFIqTWF0aC5jb3MoYTIpLCBjeSArIFIqTWF0aC5zaW4o", "YTIpCiAgICAgIF0pOwogICAgfQogICAgcmV0dXJuIHNlZ3M7CiAgfQoKICBmdW5jdGlvbiBidWlsZEdy", "aWQoKSB7CiAgICBhbGxTZWdzID0gW107CiAgICAvLyBUaHJlZSBzY2FsZSBsZXZlbHMgZm9yIGluZmlu", "aXRlIG5lc3RpbmcgZmVlbAogICAgY29uc3Qgc2NhbGVzID0gWwogICAgICB7IFI6IE1hdGgubWluKFcs", "SCkqMC4wOSwgZGVwdGg6MiB9LAogICAgICB7IFI6IE1hdGgubWluKFcsSCkqMC4wNDUsIGRlcHRoOjEg", "fSwKICAgICAgeyBSOiBNYXRoLm1pbihXLEgpKjAuMDIyLCBkZXB0aDowIH0sCiAgICBdOwogICAgc2Nh", "bGVzLmZvckVhY2goKHtSLCBkZXB0aH0pID0+IHsKICAgICAgY29uc3Qgc3BhY2luZ1ggPSBSICogMi4w", "OwogICAgICBjb25zdCBzcGFjaW5nWSA9IFIgKiAxLjc0OwogICAgICBjb25zdCBjb2xzID0gTWF0aC5j", "ZWlsKFcvc3BhY2luZ1gpICsgNDsKICAgICAgY29uc3Qgcm93cyA9IE1hdGguY2VpbChIL3NwYWNpbmdZ", "KSArIDQ7CiAgICAgIGZvciAobGV0IHJvdyA9IC0yOyByb3cgPCByb3dzOyByb3crKykgewogICAgICAg", "IGZvciAobGV0IGNvbCA9IC0yOyBjb2wgPCBjb2xzOyBjb2wrKykgewogICAgICAgICAgY29uc3QgY3gg", "PSBjb2wgKiBzcGFjaW5nWCArIChyb3clMj09PTEgPyBzcGFjaW5nWCowLjUgOiAwKTsKICAgICAgICAg", "IGNvbnN0IGN5ID0gcm93ICogc3BhY2luZ1k7CiAgICAgICAgICBzdGFyU2VnbWVudHMoY3gsIGN5LCBS", "LCBkZXB0aCkuZm9yRWFjaChzID0+IGFsbFNlZ3MucHVzaChzKSk7CiAgICAgICAgfQogICAgICB9CiAg", "ICB9KTsKICAgIC8vIFNlZWQgcHVsc2VzCiAgICBwdWxzZXMgPSBbXTsKICAgIGZvciAobGV0IGkgPSAw", "OyBpIDwgMzA7IGkrKykgc3Bhd25QdWxzZShpKTsKICB9CgogIGZ1bmN0aW9uIHNwYXduUHVsc2Uoc2Vl", "ZCkgewogICAgaWYgKCFhbGxTZWdzLmxlbmd0aCkgcmV0dXJuOwogICAgY29uc3QgcmkgID0gTWF0aC5h", "YnMoTWF0aC5mbG9vcihNYXRoLnNpbigoc2VlZHx8TWF0aC5yYW5kb20oKSkqNzkxOSkqYWxsU2Vncy5s", "ZW5ndGgrYWxsU2Vncy5sZW5ndGgpKSAlIGFsbFNlZ3MubGVuZ3RoOwogICAgY29uc3QgY2kgID0gKHNl", "ZWR8fDApICUgTkVPTi5sZW5ndGg7CiAgICBjb25zdCBbcixnLGJdID0gTkVPTltjaV07CiAgICBwdWxz", "ZXMucHVzaCh7CiAgICAgIHNlZzogICBhbGxTZWdzW3JpXSwKICAgICAgdDogICAgIE1hdGgucmFuZG9t", "KCksCiAgICAgIGRpcjogICBzZWVkJTI9PT0wID8gMSA6IC0xLAogICAgICBzcGVlZDogMC4wMDMgKyBN", "YXRoLnJhbmRvbSgpKjAuMDA3LAogICAgICByLGcsYiwKICAgICAgYWxwaGE6IDAuNSArIE1hdGgucmFu", "ZG9tKCkqMC40NSwKICAgICAgd2lkdGg6IDEuMiArIE1hdGgucmFuZG9tKCkqMi4yLAogICAgICBhZ2U6", "ICAgTWF0aC5yYW5kb20oKSAqIE1hdGguUEksCiAgICB9KTsKICB9CgogIGZ1bmN0aW9uIHJlc2l6ZSgp", "IHsKICAgIFcgPSBjdi53aWR0aCAgPSB3aW5kb3cuaW5uZXJXaWR0aDsKICAgIEggPSBjdi5oZWlnaHQg", "PSB3aW5kb3cuaW5uZXJIZWlnaHQ7CiAgICBidWlsZEdyaWQoKTsKICB9CgogIGZ1bmN0aW9uIGRyYXco", "KSB7CiAgICBjdHguY2xlYXJSZWN0KDAsIDAsIFcsIEgpOwoKICAgIC8vIOKUgOKUgCBEcmF3IGJhc2Ug", "bGF0dGljZSDilIDilIAKICAgIGN0eC5zYXZlKCk7CiAgICBjdHguZ2xvYmFsQWxwaGEgID0gMTsKICAg", "IGN0eC5zdHJva2VTdHlsZSAgPSAncmdiYSgyNTUsMjE1LDgwLC4wOSknOwogICAgY3R4LmxpbmVXaWR0", "aCAgICA9IDAuNTU7CiAgICBjdHguc2hhZG93Qmx1ciAgID0gMDsKICAgIGFsbFNlZ3MuZm9yRWFjaCgo", "W3gwLHkwLHgxLHkxXSkgPT4gewogICAgICBjdHguYmVnaW5QYXRoKCk7IGN0eC5tb3ZlVG8oeDAseTAp", "OyBjdHgubGluZVRvKHgxLHkxKTsgY3R4LnN0cm9rZSgpOwogICAgfSk7CiAgICBjdHgucmVzdG9yZSgp", "OwoKICAgIC8vIOKUgOKUgCBEcmF3IG5lb24gcHVsc2VzIOKUgOKUgAogICAgcHVsc2VzLmZvckVhY2go", "cCA9PiB7CiAgICAgIGNvbnN0IFtheCxheSxieCxieV0gPSBwLnNlZzsKICAgICAgY29uc3QgZmFkZSA9", "IE1hdGgubWF4KDAsIE1hdGguc2luKHAuYWdlKSk7CiAgICAgIGNvbnN0IGEgICAgPSBwLmFscGhhICog", "ZmFkZTsKICAgICAgaWYgKGEgPCAwLjAxKSByZXR1cm47CgogICAgICAvLyBUYWlsIGdyYWRpZW50CiAg", "ICAgIGNvbnN0IHRhaWxUICA9IE1hdGgubWF4KDAsIE1hdGgubWluKDEsIHAudCAtIHAuZGlyICogMC4x", "OCkpOwogICAgICBjb25zdCBoeDAgICAgPSBheCsoYngtYXgpKk1hdGgubWluKHAudCx0YWlsVCk7CiAg", "ICAgIGNvbnN0IGh5MCAgICA9IGF5KyhieS1heSkqTWF0aC5taW4ocC50LHRhaWxUKTsKICAgICAgY29u", "c3QgaHgxICAgID0gYXgrKGJ4LWF4KSpNYXRoLm1heChwLnQsdGFpbFQpOwogICAgICBjb25zdCBoeTEg", "ICAgPSBheSsoYnktYXkpKk1hdGgubWF4KHAudCx0YWlsVCk7CiAgICAgIGNvbnN0IGdyZCAgICA9IGN0", "eC5jcmVhdGVMaW5lYXJHcmFkaWVudChoeDAsaHkwLGh4MSxoeTEpOwogICAgICBjb25zdCBpc0hlYWQg", "PSBwLmRpcj09PTE7IC8vIGhlYWQgYXQgaHgxL2h5MSB3aGVuIGdvaW5nIGZvcndhcmQKICAgICAgZ3Jk", "LmFkZENvbG9yU3RvcCgwLCBgcmdiYSgke3Aucn0sJHtwLmd9LCR7cC5ifSwke2lzSGVhZD8wOmF9KWAp", "OwogICAgICBncmQuYWRkQ29sb3JTdG9wKDEsIGByZ2JhKCR7cC5yfSwke3AuZ30sJHtwLmJ9LCR7aXNI", "ZWFkP2E6MH0pYCk7CgogICAgICBjdHguc2F2ZSgpOwogICAgICBjdHguc3Ryb2tlU3R5bGUgPSBncmQ7", "CiAgICAgIGN0eC5saW5lV2lkdGggICA9IHAud2lkdGg7CiAgICAgIGN0eC5saW5lQ2FwICAgICA9ICdy", "b3VuZCc7CiAgICAgIGN0eC5zaGFkb3dCbHVyICA9IDEwOwogICAgICBjdHguc2hhZG93Q29sb3IgPSBg", "cmdiYSgke3Aucn0sJHtwLmd9LCR7cC5ifSwke2EqMC44fSlgOwogICAgICBjdHguYmVnaW5QYXRoKCk7", "IGN0eC5tb3ZlVG8oaHgwLGh5MCk7IGN0eC5saW5lVG8oaHgxLGh5MSk7IGN0eC5zdHJva2UoKTsKCiAg", "ICAgIC8vIEJyaWdodCBoZWFkCiAgICAgIGNvbnN0IGh4ID0gYXgrKGJ4LWF4KSpwLnQsIGh5ID0gYXkr", "KGJ5LWF5KSpwLnQ7CiAgICAgIGN0eC5iZWdpblBhdGgoKTsgY3R4LmFyYyhoeCxoeSxwLndpZHRoKjEu", "MSwwLE1hdGguUEkqMik7CiAgICAgIGN0eC5maWxsU3R5bGUgID0gYHJnYmEoMjU1LDI1NSwyNTUsJHth", "KjAuOTV9KWA7CiAgICAgIGN0eC5zaGFkb3dCbHVyID0gMTY7CiAgICAgIGN0eC5zaGFkb3dDb2xvcj0g", "YHJnYmEoJHtwLnJ9LCR7cC5nfSwke3AuYn0sMSlgOwogICAgICBjdHguZmlsbCgpOwogICAgICBjdHgu", "cmVzdG9yZSgpOwoKICAgICAgLy8gQWR2YW5jZQogICAgICBwLnQgICArPSBwLnNwZWVkICogcC5kaXI7", "CiAgICAgIHAuYWdlICs9IDAuMDE0OwogICAgICBpZiAocC50Pj0xKXtwLnQ9MTtwLmRpcj0tMTt9CiAg", "ICAgIGlmIChwLnQ8PTApe3AudD0wO3AuZGlyPSAxO30KICAgIH0pOwoKICAgIC8vIEN1bGwgZGVhZCwg", "c3Bhd24gZnJlc2gKICAgIGlmIChmcmFtZSAlIDYgPT09IDApIHsKICAgICAgcHVsc2VzID0gcHVsc2Vz", "LmZpbHRlcihwID0+IHAuYWdlIDwgTWF0aC5QSSk7CiAgICAgIHdoaWxlIChwdWxzZXMubGVuZ3RoIDwg", "MzIpIHNwYXduUHVsc2UoZnJhbWUgKiAzICsgcHVsc2VzLmxlbmd0aCk7CiAgICB9CgogICAgZnJhbWUr", "KzsKICAgIHJlcXVlc3RBbmltYXRpb25GcmFtZShkcmF3KTsKICB9CgogIHJlc2l6ZSgpOwogIHdpbmRv", "dy5hZGRFdmVudExpc3RlbmVyKCdyZXNpemUnLCByZXNpemUpOwogIGRyYXcoKTsKfSkoKTsK"];
-  const _encoded = _chunks.join('');
-  try {
-    /* UTF-8 safe decode — preserves Hebrew characters */
-    const _raw   = atob(_encoded);
-    const _bytes = new Uint8Array(_raw.length);
-    for (let _i = 0; _i < _raw.length; _i++) {
-      _bytes[_i] = _raw.charCodeAt(_i);
+  sv.innerHTML = rows.map((row, idx) => {
+    const sefCol = sefColors[row.sef] || '#fff';
+    const valStyle = row.valStyle || '';
+    const isDiv = idx > 0 && (idx === 1 || idx === 3 || idx === 5 || idx === 6);
+    const divider = isDiv ? '<div class="sc-divider"></div>' : '';
+    return divider +
+      `<div class="stack-card">
+        <span class="sc-label">${row.label}</span>
+        <span class="sc-value" style="${valStyle}">${row.value}</span>
+        <span class="sc-sef" style="color:${sefCol}">${row.sef}</span>
+        <span class="sc-abbrev sab-line">${row.abbr}</span>
+      </div>`;
+  }).join('');
+}
+
+/* ═══════════════════════════════════════
+   INTERLOCKING STAR OF DAVID LATTICE
+   Weaving triangle pattern like the reference image,
+   with nested scales + sefirah neon pulses
+═══════════════════════════════════════ */
+(function initLatticeBg() {
+  const cv  = document.getElementById('bgCanvas');
+  const ctx = cv.getContext('2d');
+
+  // ── Sefirah neon colors ──
+  const NEON = [
+    [255,220,0],    // tiferet  gold
+    [66,165,245],   // chesed   blue
+    [239,83,80],    // gevurah  red
+    [0,230,118],    // netzach  green
+    [234,128,252],  // hod      magenta
+    [179,136,255],  // yesod    violet
+  ];
+
+  let W, H, allSegs = [], pulses = [];
+  let frame = 0;
+
+  // ── Build one Star of David (interlocking ribbon style) ──
+  // Each star = 2 overlapping triangles, each triangle drawn as
+  // a thick ribbon with inner parallel lines (the weave illusion)
+  function starSegments(cx, cy, R, depth) {
+    const segs = [];
+    const ribbon = R * 0.13; // ribbon gap
+    for (let tri = 0; tri < 2; tri++) {
+      const pts = [];
+      for (let i = 0; i < 3; i++) {
+        const a = (i * 120 + tri * 60 - 90) * Math.PI / 180;
+        pts.push([cx + R * Math.cos(a), cy + R * Math.sin(a)]);
+      }
+      // Outer triangle edges
+      for (let i = 0; i < 3; i++) {
+        const a = pts[i], b = pts[(i+1)%3];
+        segs.push([a[0],a[1],b[0],b[1]]);
+      }
+      // Inner parallel ribbon lines (offset inward)
+      for (let i = 0; i < 3; i++) {
+        const a = pts[i], b = pts[(i+1)%3];
+        const dx = b[0]-a[0], dy = b[1]-a[1];
+        const len = Math.sqrt(dx*dx+dy*dy);
+        const nx = -dy/len * ribbon, ny = dx/len * ribbon;
+        segs.push([a[0]+nx,a[1]+ny, b[0]+nx,b[1]+ny]);
+        segs.push([a[0]-nx,a[1]-ny, b[0]-nx,b[1]-ny]);
+      }
+      // Inner smaller echo triangle (nesting)
+      if (depth > 0) {
+        const r2 = R * 0.38;
+        for (let i = 0; i < 3; i++) {
+          const a2 = (i*120 + tri*60 - 90) * Math.PI/180;
+          const p2 = [cx + r2*Math.cos(a2), cy + r2*Math.sin(a2)];
+          const a3 = ((i+1)*120 + tri*60 - 90) * Math.PI/180;
+          const p3 = [cx + r2*Math.cos(a3), cy + r2*Math.sin(a3)];
+          segs.push([p2[0],p2[1],p3[0],p3[1]]);
+        }
+      }
     }
-    const _src = new TextDecoder('utf-8').decode(_bytes);
-    (new Function(_src))();
-  } catch(_e) {
-    console.error('Application error:', _e.message);
+    // Cross-lines connecting the 6 points (hexagram spokes)
+    for (let i = 0; i < 6; i++) {
+      const a1 = (i*60 - 90) * Math.PI/180;
+      const a2 = ((i+2)*60 - 90) * Math.PI/180;
+      segs.push([
+        cx + R*Math.cos(a1), cy + R*Math.sin(a1),
+        cx + R*Math.cos(a2), cy + R*Math.sin(a2)
+      ]);
+    }
+    return segs;
   }
+
+  function buildGrid() {
+    allSegs = [];
+    // Three scale levels for infinite nesting feel
+    const scales = [
+      { R: Math.min(W,H)*0.09, depth:2 },
+      { R: Math.min(W,H)*0.045, depth:1 },
+      { R: Math.min(W,H)*0.022, depth:0 },
+    ];
+    scales.forEach(({R, depth}) => {
+      const spacingX = R * 2.0;
+      const spacingY = R * 1.74;
+      const cols = Math.ceil(W/spacingX) + 4;
+      const rows = Math.ceil(H/spacingY) + 4;
+      for (let row = -2; row < rows; row++) {
+        for (let col = -2; col < cols; col++) {
+          const cx = col * spacingX + (row%2===1 ? spacingX*0.5 : 0);
+          const cy = row * spacingY;
+          starSegments(cx, cy, R, depth).forEach(s => allSegs.push(s));
+        }
+      }
+    });
+    // Seed pulses
+    pulses = [];
+    for (let i = 0; i < 30; i++) spawnPulse(i);
+  }
+
+  function spawnPulse(seed) {
+    if (!allSegs.length) return;
+    const ri  = Math.abs(Math.floor(Math.sin((seed||Math.random())*7919)*allSegs.length+allSegs.length)) % allSegs.length;
+    const ci  = (seed||0) % NEON.length;
+    const [r,g,b] = NEON[ci];
+    pulses.push({
+      seg:   allSegs[ri],
+      t:     Math.random(),
+      dir:   seed%2===0 ? 1 : -1,
+      speed: 0.003 + Math.random()*0.007,
+      r,g,b,
+      alpha: 0.5 + Math.random()*0.45,
+      width: 1.2 + Math.random()*2.2,
+      age:   Math.random() * Math.PI,
+    });
+  }
+
+  function resize() {
+    W = cv.width  = window.innerWidth;
+    H = cv.height = window.innerHeight;
+    buildGrid();
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+
+    // ── Draw base lattice ──
+    ctx.save();
+    ctx.globalAlpha  = 1;
+    ctx.strokeStyle  = 'rgba(255,215,80,.09)';
+    ctx.lineWidth    = 0.55;
+    ctx.shadowBlur   = 0;
+    allSegs.forEach(([x0,y0,x1,y1]) => {
+      ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x1,y1); ctx.stroke();
+    });
+    ctx.restore();
+
+    // ── Draw neon pulses ──
+    pulses.forEach(p => {
+      const [ax,ay,bx,by] = p.seg;
+      const fade = Math.max(0, Math.sin(p.age));
+      const a    = p.alpha * fade;
+      if (a < 0.01) return;
+
+      // Tail gradient
+      const tailT  = Math.max(0, Math.min(1, p.t - p.dir * 0.18));
+      const hx0    = ax+(bx-ax)*Math.min(p.t,tailT);
+      const hy0    = ay+(by-ay)*Math.min(p.t,tailT);
+      const hx1    = ax+(bx-ax)*Math.max(p.t,tailT);
+      const hy1    = ay+(by-ay)*Math.max(p.t,tailT);
+      const grd    = ctx.createLinearGradient(hx0,hy0,hx1,hy1);
+      const isHead = p.dir===1; // head at hx1/hy1 when going forward
+      grd.addColorStop(0, `rgba(${p.r},${p.g},${p.b},${isHead?0:a})`);
+      grd.addColorStop(1, `rgba(${p.r},${p.g},${p.b},${isHead?a:0})`);
+
+      ctx.save();
+      ctx.strokeStyle = grd;
+      ctx.lineWidth   = p.width;
+      ctx.lineCap     = 'round';
+      ctx.shadowBlur  = 10;
+      ctx.shadowColor = `rgba(${p.r},${p.g},${p.b},${a*0.8})`;
+      ctx.beginPath(); ctx.moveTo(hx0,hy0); ctx.lineTo(hx1,hy1); ctx.stroke();
+
+      // Bright head
+      const hx = ax+(bx-ax)*p.t, hy = ay+(by-ay)*p.t;
+      ctx.beginPath(); ctx.arc(hx,hy,p.width*1.1,0,Math.PI*2);
+      ctx.fillStyle  = `rgba(255,255,255,${a*0.95})`;
+      ctx.shadowBlur = 16;
+      ctx.shadowColor= `rgba(${p.r},${p.g},${p.b},1)`;
+      ctx.fill();
+      ctx.restore();
+
+      // Advance
+      p.t   += p.speed * p.dir;
+      p.age += 0.014;
+      if (p.t>=1){p.t=1;p.dir=-1;}
+      if (p.t<=0){p.t=0;p.dir= 1;}
+    });
+
+    // Cull dead, spawn fresh
+    if (frame % 6 === 0) {
+      pulses = pulses.filter(p => p.age < Math.PI);
+      while (pulses.length < 32) spawnPulse(frame * 3 + pulses.length);
+    }
+
+    frame++;
+    requestAnimationFrame(draw);
+  }
+
+  resize();
+  window.addEventListener('resize', resize);
+  draw();
 })();
 </script>
 </body>
